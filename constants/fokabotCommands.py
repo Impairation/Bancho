@@ -1154,7 +1154,7 @@ commands = [
 		"callback": report
 	}, {
 		"trigger": "!help",
-		"response": "Click (here)[https://ripple.moe/index.php?p=16&id=4] for {}'s full command list".format(glob.BOT_NAME)
+		"response": "Click (here)[https://ripple.moe/index.php?p=16&id=4] for the full command list"
 	}, #{
 		#"trigger": "!ask",
 		#"syntax": "<question>",
@@ -1187,7 +1187,7 @@ commands = [
 		"privileges": privileges.ADMIN_KICK_USERS,
 		"callback": kick
 	}, {
-		"trigger": "!{} reconnect".format(glob.BOT_NAME.lower()),
+		"trigger": "!bot reconnect",
 		"privileges": privileges.ADMIN_MANAGE_SERVERS,
 		"callback": fokabotReconnect
 	}, {
