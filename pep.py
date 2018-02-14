@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+import json
 from multiprocessing.pool import ThreadPool
 import tornado.gen
 import tornado.httpserver
@@ -60,6 +61,11 @@ if __name__ == "__main__":
 		# Read config.ini
 		consoleHelper.printNoNl("> Loading config file... ")
 		glob.conf = configHelper.config("config.ini")
+
+		# Read additional config file
+		consoleHelper.printNoNl("> Loading additional config file... ")
+		with open("config.json", "r") as f:
+			glob.conf.extra = json.load(f)
 
 		if glob.conf.default:
 			# We have generated a default config.ini, quit server
