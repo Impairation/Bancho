@@ -40,33 +40,10 @@ def instantRestart(fro, chan, message):
 	return False
 
 def faq(fro, chan, message):
-	# TODO: Unhardcode this
-	if message[0] == "rules":
-		return "Please make sure to check (Ripple's rules)[http://ripple.moe/?p=23]."
-	elif message[0] == "swearing":
-		return "Please don't abuse swearing"
-	elif message[0] == "spam":
-		return "Please don't spam"
-	elif message[0] == "offend":
-		return "Please don't offend other players"
-	elif message[0] == "github":
-		return "(Ripple's Github page!)[https://github.com/osuripple/ripple]"
-	elif message[0] == "discord":
-		return "(Join Ripple's Discord!)[https://discord.gg/0rJcZruIsA6rXuIx]"
-	elif message[0] == "blog":
-		return "You can find the latest Ripple news on the (blog)[https://ripple.moe/blog/]!"
-	elif message[0] == "changelog":
-		return "Check the (changelog)[https://ripple.moe/index.php?p=17] !"
-	elif message[0] == "status":
-		return "Check the server status (here!)[https://ripple.moe/index.php?p=27]"
-	elif message[0] == "english":
-		return "Please keep this channel in english."
-	elif message[0] == "topic":
-		return "Can you please drop the topic and talk about something else?"
-	elif message[0] == "lines":
-		return "Please try to keep your sentences on a single line to avoid getting silenced."
-	else:
-		return False
+	if message[0] in glob.conf.extra["faq"]:
+		return glob.conf.extra["faq"][message[0]]
+	
+	return False
 
 def roll(fro, chan, message):
 	maxPoints = 100
