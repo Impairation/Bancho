@@ -28,7 +28,7 @@ class handler(requestsManager.asyncRequestHandler):
 				raise exceptions.invalidArgumentsException()
 
 			chatHelper.sendMessage(
-				"FokaBot",
+				glob.BOT_NAME,
 				self.get_argument("to").encode().decode("ASCII", "ignore"),
 				self.get_argument("msg").encode().decode("ASCII", "ignore")
 			)

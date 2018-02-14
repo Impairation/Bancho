@@ -18,6 +18,7 @@ except:
 	VERSION = "Unknown"
 
 DATADOG_PREFIX = "peppy"
+BOT_NAME = "FokaBot"
 application = None
 db = None
 redis = None

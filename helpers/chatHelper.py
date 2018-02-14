@@ -177,7 +177,7 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 
 		# Redirect !report to FokaBot
 		if message.startswith("!report"):
-			to = "FokaBot"
+			to = glob.BOT_NAME
 
 		# Determine internal name if needed
 		# (toclient is used clientwise for #multiplayer and #spectator channels)
@@ -236,7 +236,7 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 			#	raise exceptions.userTournamentException()
 
 			# Make sure the recipient is not restricted or we are FokaBot
-			if recipientToken.restricted == True and fro.lower() != "fokabot":
+			if recipientToken.restricted == True and fro.lower() != glob.BOT_NAME.lower():
 				raise exceptions.userRestrictedException()
 
 			# TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
@@ -265,10 +265,10 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 			token.spamProtection()
 
 		# Fokabot message
-		if isChannel == True or to.lower() == "fokabot":
+		if isChannel == True or to.lower() == glob.BOT_NAME.lower():
 			fokaMessage = fokabot.fokabotResponse(token.username, to, message)
 			if fokaMessage:
-				sendMessage("FokaBot", to if isChannel else fro, fokaMessage)
+				sendMessage(glob.BOT_NAME, to if isChannel else fro, fokaMessage)
 
 		# File and discord logs (public chat only)
 		if to.startswith("#") and not (message.startswith("\x01ACTION is playing") and to.startswith("#spect_")):

@@ -433,7 +433,7 @@ class match:
 		# saying that the match has completed.
 		chanName = "#multi_{}".format(self.matchID)
 		if self.isTourney and (chanName in glob.channels.channels):
-			chat.sendMessage("FokaBot", chanName, "Match has just finished.")
+			chat.sendMessage(glob.BOT_NAME, chanName, "Match has just finished.")
 
 	def resetSlots(self):
 		for i in range(0,16):
@@ -665,7 +665,7 @@ class match:
 
 		# FokaBot is too busy
 		if to == 999:
-			chat.sendMessage("FokaBot", froToken.username, "I would love to join your match, but I'm busy keeping ripple up and running. Sorry. Beep Boop.")
+			chat.sendMessage(glob.BOT_NAME, froToken.username, "I would love to join your match, but I'm busy keeping ripple up and running. Sorry. Beep Boop.")
 
 		# Send message
 		message = "Come join my multiplayer match: \"[osump://{}/{} {}]\"".format(self.matchID, self.matchPassword.replace(" ", "_"), self.matchName)
@@ -855,7 +855,7 @@ class match:
 		if totalUsers == 0:
 			message = "The match is now empty."
 
-		chat.sendMessage("FokaBot", chanName, message)
+		chat.sendMessage(glob.BOT_NAME, chanName, message)
 
 	def __enter__(self):
 		# 🌚🌚🌚🌚🌚
