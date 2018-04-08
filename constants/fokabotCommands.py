@@ -40,10 +40,10 @@ def instantRestart(fro, chan, message):
 	return False
 
 def faq(fro, chan, message):
-	if message[0] in glob.conf.extra["faq"]:
-		return glob.conf.extra["faq"][message[0]]
-	
-	return False
+	key = message[0].lower()
+	if key not in glob.conf.extra["faq"]:
+		return False
+	return glob.conf.extra["faq"][key]
 
 def roll(fro, chan, message):
 	maxPoints = 100
@@ -58,8 +58,8 @@ def roll(fro, chan, message):
 #	return random.choice(["yes", "no", "maybe"])
 
 def alert(fro, chan, message):
-	msg = ' '.join(message[:])
-	if not msg.strip():
+	msg = ' '.join(message[:]).strip()
+	if not msg:
 		return False
 	glob.streams.broadcast("main", serverPackets.notification(msg))
 	return False
@@ -68,8 +68,8 @@ def alertUser(fro, chan, message):
 	target = message[0].lower()
 	targetToken = glob.tokens.getTokenFromUsername(userUtils.safeUsername(target), safe=True)
 	if targetToken is not None:
-		msg = ' '.join(message[1:])
-		if not msg.strip():
+		msg = ' '.join(message[1:]).strip()
+		if not msg:
 			return False
 		targetToken.enqueue(serverPackets.notification(msg))
 		return False
@@ -137,12 +137,15 @@ def fokabotReconnect(fro, chan, message):
 	return False
 
 def silence(fro, chan, message):
-	for i in message:
-		i = i.lower()
+	message = [x.lower() for x in message]
 	target = message[0]
 	amount = message[1]
 	unit = message[2]
-	reason = ' '.join(message[3:])
+	reason = ' '.join(message[3:]).strip()
+	if not reason:
+		return "Please provide a valid reason."
+	if not amount.isdigit():
+		return "The amount must be a number."
 
 	# Get target user ID
 	targetUserID = userUtils.getIDSafe(target)
@@ -758,7 +761,10 @@ def multiplayer(fro, chan, message):
 	def mpMake():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp make <name>")
-		matchID = glob.matches.createMatch(" ".join(message[1:]), generalUtils.stringMd5(generalUtils.randomString(32)), 0, "Tournament", "", 0, -1, isTourney=True)
+		matchName = " ".join(message[1:]).strip()
+		if not matchName:
+			raise exceptions.invalidArgumentsException("Match name must not be empty!")
+		matchID = glob.matches.createMatch(matchName, generalUtils.stringMd5(generalUtils.randomString(32)), 0, "Tournament", "", 0, -1, isTourney=True)
 		glob.matches.matches[matchID].sendUpdates()
 		return "Tourney match #{} created!".format(matchID)
 
@@ -812,7 +818,9 @@ def multiplayer(fro, chan, message):
 	def mpHost():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp host <username>")
-		username = message[1]
+		username = message[1].strip()
+		if not username:
+			raise exceptions.invalidArgumentsException("Please provide a username")
 		userID = userUtils.getIDSafe(username)
 		if userID is None:
 			raise exceptions.userNotFoundException("No such user")
@@ -877,7 +885,9 @@ def multiplayer(fro, chan, message):
 	def mpInvite():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp invite <username>")
-		username = message[1]
+		username = message[1].strip()
+		if not username:
+			raise exceptions.invalidArgumentsException("Please provide a username")
 		userID = userUtils.getIDSafe(username)
 		if userID is None:
 			raise exceptions.userNotFoundException("No such user")
@@ -944,7 +954,9 @@ def multiplayer(fro, chan, message):
 	def mpKick():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp kick <username>")
-		username = message[1]
+		username = message[1].strip()
+		if not username:
+			raise exceptions.invalidArgumentsException("Please provide a username")
 		userID = userUtils.getIDSafe(username)
 		if userID is None:
 			raise exceptions.userNotFoundException("No such user")
@@ -957,7 +969,7 @@ def multiplayer(fro, chan, message):
 		return "{} has been kicked from the match.".format(username)
 
 	def mpPassword():
-		password = "" if len(message) < 2 else message[1]
+		password = "" if len(message) < 2 or not message[1].strip() else message[1]
 		_match = glob.matches.matches[getMatchIDFromChannel(chan)]
 		_match.changePassword(password)
 		return "Match password has been changed!"
@@ -1001,7 +1013,9 @@ def multiplayer(fro, chan, message):
 	def mpTeam():
 		if len(message) < 3:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp team <username> <colour>")
-		username = message[1]
+		username = message[1].strip()
+		if not username:
+			raise exceptions.invalidArgumentsException("Please provide a username")
 		colour = message[2].lower().strip()
 		if colour not in ["red", "blue"]:
 			raise exceptions.invalidArgumentsException("Team colour must be red or blue")
@@ -1068,7 +1082,7 @@ def multiplayer(fro, chan, message):
 		if requestedSubcommand not in subcommands:
 			raise exceptions.invalidArgumentsException("Invalid subcommand")
 		return subcommands[requestedSubcommand]()
-	except (exceptions.invalidArgumentsException, exceptions.userNotFoundException) as e:
+	except (exceptions.invalidArgumentsException, exceptions.userNotFoundException, exceptions.invalidUserException) as e:
 		return str(e)
 	except exceptions.wrongChannelException:
 		return "This command only works in multiplayer chat channels"
@@ -1080,7 +1094,9 @@ def multiplayer(fro, chan, message):
 def switchServer(fro, chan, message):
 	# Get target user ID
 	target = message[0]
-	newServer = message[1]
+	newServer = message[1].strip()
+	if not newServer:
+		return "Invalid server IP"
 	targetUserID = userUtils.getIDSafe(target)
 	userID = userUtils.getID(fro)
 
@@ -1098,7 +1114,9 @@ def switchServer(fro, chan, message):
 
 def rtx(fro, chan, message):
 	target = message[0]
-	message = " ".join(message[1:])
+	message = " ".join(message[1:]).strip()
+	if not message:
+		return "Invalid message"
 	targetUserID = userUtils.getIDSafe(target)
 	if not targetUserID:
 		return "{}: user not found".format(target)
