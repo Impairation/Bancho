@@ -10,7 +10,7 @@ from common import generalUtils
 from common.constants import mods
 from common.log import logUtils as log
 from common.ripple import userUtils
-from constants import exceptions, slotStatuses, matchModModes, matchTeams, matchTeamTypes
+from constants import exceptions, slotStatuses, matchModModes, matchTeams, matchTeamTypes, matchScoringTypes
 from common.constants import gameModes
 from common.constants import privileges
 from constants import serverPackets
@@ -19,6 +19,16 @@ from objects import fokabot
 from objects import glob
 from helpers import chatHelper as chat
 from common.web import cheesegull
+
+
+def bloodcatMessage(beatmapID):
+	beatmap = glob.db.fetch("SELECT song_name, beatmapset_id FROM beatmaps WHERE beatmap_id = %s LIMIT 1", [beatmapID])
+	if beatmap is None:
+		return "Sorry, I'm not able to provide a download link for this map :("
+	return "Download [https://bloodcat.com/osu/s/{} {}] from Bloodcat".format(
+		beatmap["beatmapset_id"],
+		beatmap["song_name"],
+	)
 
 """
 Commands callbacks
@@ -48,7 +58,7 @@ def faq(fro, chan, message):
 def roll(fro, chan, message):
 	maxPoints = 100
 	if len(message) >= 1:
-		if message[0].isdigit() == True and int(message[0]) > 0:
+		if message[0].isdigit() and int(message[0]) > 0:
 			maxPoints = int(message[0])
 
 	points = random.randrange(0,maxPoints)
@@ -433,6 +443,14 @@ def getPPMessage(userID, just_data = False):
 
 def tillerinoNp(fro, chan, message):
 	try:
+		# Bloodcat trigger for #spect_
+		if chan.startswith("#spect_"):
+			spectatorHostUserID = getSpectatorHostUserIDFromChannel(chan)
+			spectatorHostToken = glob.tokens.getTokenFromUserID(spectatorHostUserID, ignoreIRC=True)
+			if spectatorHostToken is None:
+				return False
+			return bloodcatMessage(spectatorHostToken.beatmapID)
+
 		# Run the command in PM only
 		if chan.startswith("#"):
 			return False
@@ -746,18 +764,27 @@ def report(fro, chan, message):
 					token.enqueue(serverPackets.notification(msg))
 	return False
 
-def multiplayer(fro, chan, message):
-	def getMatchIDFromChannel(chan):
-		if not chan.lower().startswith("#multi_"):
-			raise exceptions.wrongChannelException()
-		parts = chan.lower().split("_")
-		if len(parts) < 2 or not parts[1].isdigit():
-			raise exceptions.wrongChannelException()
-		matchID = int(parts[1])
-		if matchID not in glob.matches.matches:
-			raise exceptions.matchNotFoundException()
-		return matchID
+def getMatchIDFromChannel(chan):
+	if not chan.lower().startswith("#multi_"):
+		raise exceptions.wrongChannelException()
+	parts = chan.lower().split("_")
+	if len(parts) < 2 or not parts[1].isdigit():
+		raise exceptions.wrongChannelException()
+	matchID = int(parts[1])
+	if matchID not in glob.matches.matches:
+		raise exceptions.matchNotFoundException()
+	return matchID
 
+def getSpectatorHostUserIDFromChannel(chan):
+	if not chan.lower().startswith("#spect_"):
+		raise exceptions.wrongChannelException()
+	parts = chan.lower().split("_")
+	if len(parts) < 2 or not parts[1].isdigit():
+		raise exceptions.wrongChannelException()
+	userID = int(parts[1])
+	return userID
+
+def multiplayer(fro, chan, message):
 	def mpMake():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp make <name>")
@@ -773,6 +800,12 @@ def multiplayer(fro, chan, message):
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp join <id>")
 		matchID = int(message[1])
 		userToken = glob.tokens.getTokenFromUsername(fro, ignoreIRC=True)
+		if userToken is None:
+			raise exceptions.invalidArgumentsException(
+				"No game clients found for {}, can't join the match. "
+			    "If you're a referee and you want to join the chat "
+				"channel from IRC, use /join #multi_{} instead.".format(fro, matchID)
+			)
 		userToken.joinMatch(matchID)
 		return "Attempting to join match #{}!".format(matchID)
 
@@ -997,6 +1030,8 @@ def multiplayer(fro, chan, message):
 				newMods |= mods.FLASHLIGHT
 			elif _mod.lower().strip() == "fi":
 				newMods |= mods.FADEIN
+			elif _mod.lower().strip() == "ez":
+				newMods |= mods.EASY
 			if _mod.lower().strip() == "none":
 				newMods = 0
 
@@ -1028,7 +1063,13 @@ def multiplayer(fro, chan, message):
 
 	def mpSettings():
 		_match = glob.matches.matches[getMatchIDFromChannel(chan)]
-		msg = "PLAYERS IN THIS MATCH:\n"
+		single = False if len(message) < 2 else message[1].strip().lower() == "single"
+		msg = "PLAYERS IN THIS MATCH "
+		if not single:
+			msg += "(use !mp settings single for a single-line version):"
+			msg += "\n"
+		else:
+			msg += ": "
 		empty = True
 		for slot in _match.slots:
 			if slot.user is None:
@@ -1044,16 +1085,28 @@ def multiplayer(fro, chan, message):
 			else:
 				readableStatus = readableStatuses[slot.status]
 			empty = False
-			msg += "* [{team}] <{status}> ~ {username}{mods}\n".format(
+			msg += "* [{team}] <{status}> ~ {username}{mods}{nl}".format(
 				team="red" if slot.team == matchTeams.RED else "blue" if slot.team == matchTeams.BLUE else "!! no team !!",
 				status=readableStatus,
 				username=glob.tokens.tokens[slot.user].username,
-				mods=" (+ {})".format(generalUtils.readableMods(slot.mods)) if slot.mods > 0 else ""
+				mods=" (+ {})".format(generalUtils.readableMods(slot.mods)) if slot.mods > 0 else "",
+				nl=" | " if single else "\n"
 			)
 		if empty:
 			msg += "Nobody.\n"
+		msg = msg.rstrip(" | " if single else "\n")
 		return msg
 
+	def mpScoreV():
+		if len(message) < 2 or message[1] not in ("1", "2"):
+			raise exceptions.invalidArgumentsException("Wrong syntax: !mp scorev <1|2>")
+		_match = glob.matches.matches[getMatchIDFromChannel(chan)]
+		_match.matchScoringType = matchScoringTypes.SCORE_V2 if message[1] == "2" else matchScoringTypes.SCORE
+		_match.sendUpdates()
+		return "Match scoring type set to scorev{}".format(message[1])
+
+	def mpHelp():
+		return "Supported subcommands: !mp <{}>".format("|".join(k for k in subcommands.keys()))
 
 	try:
 		subcommands = {
@@ -1077,6 +1130,8 @@ def multiplayer(fro, chan, message):
 			"mods": mpMods,
 			"team": mpTeam,
 			"settings": mpSettings,
+            "scorev": mpScoreV,
+			"help": mpHelp
 		}
 		requestedSubcommand = message[0].lower().strip()
 		if requestedSubcommand not in subcommands:
@@ -1124,7 +1179,26 @@ def rtx(fro, chan, message):
 	userToken.enqueue(serverPackets.rtx(message))
 	return ":ok_hand:"
 
+def bloodcat(fro, chan, message):
+	try:
+		matchID = getMatchIDFromChannel(chan)
+	except exceptions.wrongChannelException:
+		matchID = None
+	try:
+		spectatorHostUserID = getSpectatorHostUserIDFromChannel(chan)
+	except exceptions.wrongChannelException:
+		spectatorHostUserID = None
 
+	if matchID is not None:
+		if matchID not in glob.matches.matches:
+			return "This match doesn't seem to exist... Or does it...?"
+		beatmapID = glob.matches.matches[matchID].beatmapID
+	else:
+		spectatorHostToken = glob.tokens.getTokenFromUserID(spectatorHostUserID, ignoreIRC=True)
+		if spectatorHostToken is None:
+			return "The spectator host is offline."
+		beatmapID = spectatorHostToken.beatmapID
+	return bloodcatMessage(beatmapID)
 
 
 """
@@ -1276,6 +1350,9 @@ commands = [
 		"privileges": privileges.ADMIN_MANAGE_USERS,
 		"syntax": "<username> <message>",
 		"callback": rtx
+	}, {
+		"trigger": "!bloodcat",
+		"callback": bloodcat
 	}
 	#
 	#	"trigger": "!acc",

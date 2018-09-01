@@ -2,6 +2,7 @@
 from common import generalUtils
 from constants import serverPackets
 from objects import glob
+from common.log import logUtils as log
 
 
 class banchoConfig:
@@ -30,7 +31,12 @@ class banchoConfig:
 		"""
 		self.config["banchoMaintenance"] = generalUtils.stringToBool(glob.db.fetch("SELECT value_int FROM bancho_settings WHERE name = 'bancho_maintenance'")["value_int"])
 		self.config["freeDirect"] = generalUtils.stringToBool(glob.db.fetch("SELECT value_int FROM bancho_settings WHERE name = 'free_direct'")["value_int"])
-		self.config["menuIcon"] = glob.db.fetch("SELECT value_string FROM bancho_settings WHERE name = 'menu_icon'")["value_string"]
+		mainMenuIcon = glob.db.fetch("SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1")
+		if mainMenuIcon is None:
+			self.config["menuIcon"] = ""
+		else:
+			imageURL = "https://i.ppy.sh/{}.png".format(mainMenuIcon["file_id"])
+			self.config["menuIcon"] = "{}|{}".format(imageURL, mainMenuIcon["url"])
 		self.config["loginNotification"] = glob.db.fetch("SELECT value_string FROM bancho_settings WHERE name = 'login_notification'")["value_string"]
 
 
@@ -57,5 +63,5 @@ class banchoConfig:
 		glob.streams.broadcast("main", serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
 		glob.streams.broadcast("main", serverPackets.channelInfoEnd())
 		for key, value in glob.channels.channels.items():
-			if value.publicRead == True and value.hidden == False:
+			if value.publicRead and not value.hidden:
 				glob.streams.broadcast("main", serverPackets.channelInfo(key))

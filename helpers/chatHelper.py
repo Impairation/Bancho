@@ -8,7 +8,7 @@ from objects import fokabot
 from objects import glob
 
 
-def joinChannel(userID = 0, channel = "", token = None, toIRC = True):
+def joinChannel(userID = 0, channel = "", token = None, toIRC = True, force=False):
 	"""
 	Join a channel
 
@@ -16,6 +16,7 @@ def joinChannel(userID = 0, channel = "", token = None, toIRC = True):
 	:param token: user token object of user that joins the channel. Optional. userID can be used instead.
 	:param channel: channel name
 	:param toIRC: if True, send this channel join event to IRC. Must be true if joining from bancho. Default: True
+	:param force: whether to allow game clients to join #spect_ and #multi_ channels
 	:return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
 	"""
 	try:
@@ -33,11 +34,16 @@ def joinChannel(userID = 0, channel = "", token = None, toIRC = True):
 		if channel not in glob.channels.channels:
 			raise exceptions.channelUnknownException()
 
+		# Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
+		channelObject = glob.channels.channels[channel]
+		if channelObject.isSpecial and not token.irc and not force:
+			raise exceptions.channelUnknownException()
+
 		# Add the channel to our joined channel
-		token.joinChannel(glob.channels.channels[channel])
+		token.joinChannel(channelObject)
 
 		# Send channel joined (IRC)
-		if glob.irc == True and toIRC == True:
+		if glob.irc and not toIRC:
 			glob.ircServer.banchoJoinChannel(token.username, channel)
 
 		# Console output
@@ -58,7 +64,7 @@ def joinChannel(userID = 0, channel = "", token = None, toIRC = True):
 		log.warning("User not connected to IRC/Bancho")
 		return 403	# idk
 
-def partChannel(userID = 0, channel = "", token = None, toIRC = True, kick = False):
+def partChannel(userID = 0, channel = "", token = None, toIRC = True, kick = False, force=False):
 	"""
 	Part a channel
 
@@ -67,6 +73,7 @@ def partChannel(userID = 0, channel = "", token = None, toIRC = True, kick = Fal
 	:param channel: channel name
 	:param toIRC: if True, send this channel join event to IRC. Must be true if joining from bancho. Optional. Default: True
 	:param kick: if True, channel tab will be closed on client. Used when leaving lobby. Optional. Default: False
+	:param force: whether to allow game clients to part #spect_ and #multi_ channels
 	:return: 0 if joined or other IRC code in case of error. Needed only on IRC-side
 	"""
 	try:
@@ -103,17 +110,21 @@ def partChannel(userID = 0, channel = "", token = None, toIRC = True, kick = Fal
 		if channel not in glob.channels.channels:
 			raise exceptions.channelUnknownException()
 
+		# Make sure a game client is not trying to join a #multi_ or #spect_ channel manually
+		channelObject = glob.channels.channels[channel]
+		if channelObject.isSpecial and not token.irc and not force:
+			raise exceptions.channelUnknownException()
+
 		# Make sure the user is in the channel
 		if channel not in token.joinedChannels:
 			raise exceptions.userNotInChannelException()
 
 		# Part channel (token-side and channel-side)
-		channelObject = glob.channels.channels[channel]
 		token.partChannel(channelObject)
 
 		# Delete temporary channel if everyone left
 		if "chat/{}".format(channelObject.name) in glob.streams.streams:
-			if channelObject.temp == True and len(glob.streams.streams["chat/{}".format(channelObject.name)].clients) - 1 == 0:
+			if channelObject.temp and len(glob.streams.streams["chat/{}".format(channelObject.name)].clients) - 1 == 0:
 				glob.channels.removeChannel(channelObject.name)
 
 		# Force close tab if needed
@@ -122,7 +133,7 @@ def partChannel(userID = 0, channel = "", token = None, toIRC = True, kick = Fal
 			token.enqueue(serverPackets.channelKicked(channelClient))
 
 		# IRC part
-		if glob.irc == True and toIRC == True:
+		if glob.irc and toIRC:
 			glob.ircServer.banchoPartChannel(token.username, channel)
 
 		# Console output
@@ -217,11 +228,17 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 				raise exceptions.channelUnknownException()
 
 			# Make sure the channel is not in moderated mode
-			if glob.channels.channels[to].moderated == True and token.admin == False:
+			if glob.channels.channels[to].moderated and not token.admin:
 				raise exceptions.channelModeratedException()
 
+			# Make sure we are in the channel
+			if to not in token.joinedChannels:
+				# I'm too lazy to put and test the correct IRC error code here...
+				# but IRC is not strict at all so who cares
+				raise exceptions.channelNoPermissionsException()
+
 			# Make sure we have write permissions
-			if glob.channels.channels[to].publicWrite == False and token.admin == False:
+			if not glob.channels.channels[to].publicWrite and not token.admin:
 				raise exceptions.channelNoPermissionsException()
 
 			# Add message in buffer
@@ -241,7 +258,7 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 			#	raise exceptions.userTournamentException()
 
 			# Make sure the recipient is not restricted or we are FokaBot
-			if recipientToken.restricted == True and fro.lower() != glob.BOT_NAME.lower():
+			if recipientToken.restricted and fro.lower() != glob.BOT_NAME.lower():
 				raise exceptions.userRestrictedException()
 
 			# TODO: Make sure the recipient has not disabled PMs for non-friends or he's our friend
@@ -251,14 +268,14 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 				sendMessage(to, fro, "\x01ACTION is away: {}\x01".format(recipientToken.awayMessage))
 
 			# Check message templates (mods/admins only)
-			if message in messageTemplates.templates and token.admin == True:
+			if message in messageTemplates.templates and token.admin:
 				sendMessage(fro, to, messageTemplates.templates[message])
 
 			# Everything seems fine, send packet
 			recipientToken.enqueue(packet)
 
 		# Send the message to IRC
-		if glob.irc == True and toIRC == True:
+		if glob.irc and toIRC:
 			messageSplitInLines = message.encode("latin-1").decode("utf-8").split("\n")
 			for line in messageSplitInLines:
 				if line == messageSplitInLines[:1] and line == "":
@@ -270,7 +287,7 @@ def sendMessage(fro = "", to = "", message = "", token = None, toIRC = True):
 			token.spamProtection()
 
 		# Fokabot message
-		if isChannel == True or to.lower() == glob.BOT_NAME.lower():
+		if isChannel or to.lower() == glob.BOT_NAME.lower():
 			fokaMessage = fokabot.fokabotResponse(token.username, to, message)
 			if fokaMessage:
 				sendMessage(glob.BOT_NAME, to if isChannel else fro, fokaMessage)

@@ -1,3 +1,6 @@
+import logging
+
+from constants import exceptions
 from objects import glob
 
 class channel:
@@ -20,14 +23,22 @@ class channel:
 		self.temp = temp
 		self.hidden = hidden
 
-		# Client name (#spectator/#multiplayer)
-		self.clientName = self.name
-		if self.name.startswith("#spect_"):
-			self.clientName = "#spectator"
-		elif self.name.startswith("#multi_"):
-			self.clientName = "#multiplayer"
-
 		# Make Foka join the channel
 		fokaToken = glob.tokens.getTokenFromUserID(999)
 		if fokaToken is not None:
-			fokaToken.joinChannel(self)
+			try:
+				fokaToken.joinChannel(self)
+			except exceptions.userAlreadyInChannelException:
+				logging.warning("FokaBot has already joined channel {}".format(self.name))
+
+	@property
+	def isSpecial(self):
+		return any(self.name.startswith(x) for x in ("#spect_", "#multi_"))
+
+	@property
+	def clientName(self):
+		if self.name.startswith("#spect_"):
+			return "#spectator"
+		elif self.name.startswith("#multi_"):
+			return "#multiplayer"
+		return self.name
