@@ -18,7 +18,7 @@ def handle(userToken, packetData):
 			raise exceptions.matchCreateError()
 
 		# Create a match object
-		# TODO: Player number check
+		# TODO: Player number check (Dirty hack below)
 		matchID = glob.matches.createMatch(matchName, packetData["matchPassword"].strip(), packetData["beatmapID"], packetData["beatmapName"], packetData["beatmapMD5"], packetData["gameMode"], userID)
 
 		# Make sure the match has been created
@@ -28,6 +28,11 @@ def handle(userToken, packetData):
 		with glob.matches.matches[matchID] as match:
 			# Join that match
 			userToken.joinMatch(matchID)
+
+			# Disable slots (Dirty)
+			for i in range(0,16):
+				if match.slots[i].status is not 4:
+					match.slots[i].status = packetData["slot{}Status".format(i)]
 
 			# Give host to match creator
 			match.setHost(userID)
