@@ -253,7 +253,7 @@ class match:
 		else:
 			newStatus = slotStatuses.LOCKED
 
-		# Send updated settings to kicked user, so he returns to lobby
+		# Send updated settings to kicked user, so THEY returns to lobby
 		if self.slots[slotID].user is not None and self.slots[slotID].user in glob.tokens.tokens:
 			glob.tokens.tokens[self.slots[slotID].user].enqueue(serverPackets.updateMatch(self.matchID))
 
