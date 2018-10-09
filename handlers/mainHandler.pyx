@@ -243,7 +243,7 @@ class handler(requestsManager.asyncRequestHandler):
 	@tornado.web.asynchronous
 	@tornado.gen.engine
 	def asyncGet(self):
-		html = 	"<html><head><title>MA MAURO ESISTE?</title><style type='text/css'>body{width:30%}</style></head><body><pre>"
+		html = 	"<html><head><title>MA MAURO ESISTE?</title><style type='text/css'>body{width:30%;background:#222;color:#fff;}</style></head><body><pre>"
 		html += "           _                 __<br>"
 		html += "          (_)              /  /<br>"
 		html += "   ______ __ ____   ____  /  /____<br>"
@@ -262,5 +262,5 @@ class handler(requestsManager.asyncRequestHandler):
 		html += "             \\\"\"\"\"\"\"\"\"\"\"\"\"\"\"/<br>"
 		html += "              \\ . ..  .. . /<br>"
 		html += "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^<br>"
-		html += "</marquee><br><strike>reverse engineering a protocol impossible to reverse engineer since always</strike><br>we are actually reverse engineering bancho successfully. for the third time.<br><br><i>&copy; Ripple team, 2016</i></pre></body></html>"
+		html += "</marquee><br><strike>reverse engineering a protocol impossible to reverse engineer since always</strike><br>we are actually reverse engineering bancho successfully. for the third time.<br><br>Running osufx branch.<br><i>&copy; Ripple team, 2016</i></pre></body></html>"
 		self.write(html)

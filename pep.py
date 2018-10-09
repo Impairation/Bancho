@@ -1,7 +1,6 @@
 import os
 import sys
 import threading
-import json
 from multiprocessing.pool import ThreadPool
 import tornado.gen
 import tornado.httpserver
@@ -9,6 +8,10 @@ import tornado.ioloop
 import tornado.web
 from raven.contrib.tornado import AsyncSentryClient
 import redis
+
+import json
+import shutil
+from distutils.version import LooseVersion
 
 from common import generalUtils, agpl
 from common.constants import bcolors
@@ -71,11 +74,6 @@ if __name__ == "__main__":
 		consoleHelper.printNoNl("> Loading config file... ")
 		glob.conf = configHelper.config("config.ini")
 
-		# Read additional config file
-		consoleHelper.printNoNl("> Loading additional config file... ")
-		with open("config.json", "r") as f:
-			glob.conf.extra = json.load(f)
-
 		if glob.conf.default:
 			# We have generated a default config.ini, quit server
 			consoleHelper.printWarning()
@@ -91,6 +89,34 @@ if __name__ == "__main__":
 			sys.exit()
 		else:
 			consoleHelper.printDone()
+		
+		# Read additional config file
+		consoleHelper.printNoNl("> Loading additional config file... ")
+		try:
+			if not os.path.isfile(glob.conf.config["custom"]["config"]):
+				consoleHelper.printWarning()
+				consoleHelper.printColored("[!] Missing config file at {}; A default one has been generated at this location.".format(glob.conf.config["custom"]["config"]), bcolors.YELLOW)
+				shutil.copy("common/default_config.json", glob.conf.config["custom"]["config"])
+
+			with open(glob.conf.config["custom"]["config"], "r") as f:
+				glob.conf.extra = json.load(f)
+
+			consoleHelper.printDone()
+		except:
+			consoleHelper.printWarning()
+			consoleHelper.printColored("[!] Unable to load custom config at {}".format(glob.conf.config["custom"]["config"]), bcolors.RED)
+			consoleHelper.printColored("[!] Make sure you have the latest osufx common submodule!", bcolors.RED)
+			sys.exit()
+		
+		# Check if running common module is usable
+		if glob.COMMON_VERSION == "Unknown":
+			consoleHelper.printWarning()
+			consoleHelper.printColored("[!] You do not seem to be using osufx's common submodule... nothing will work...", bcolors.RED)
+			consoleHelper.printColored("[!] You can download or fork the submodule from {}https://github.com/osufx/ripple-python-common".format(bcolors.UNDERLINE), bcolors.RED)
+			sys.exit()
+		elif LooseVersion(glob.COMMON_VERSION_REQ) > LooseVersion(glob.COMMON_VERSION):
+			consoleHelper.printColored("[!] Your common submodule version is below the required version number for this version of pep.py.", bcolors.RED)
+			consoleHelper.printColored("[!] You are highly adviced to update your common submodule as stability may vary with outdated modules.", bcolors.RED)
 
 		# Create data folder if needed
 		consoleHelper.printNoNl("> Checking folders... ")

@@ -51,9 +51,9 @@ def instantRestart(fro, chan, message):
 
 def faq(fro, chan, message):
 	key = message[0].lower()
-	if key not in glob.conf.extra["faq"]:
+	if key not in glob.conf.extra["pep.py"]["faq"]:
 		return False
-	return glob.conf.extra["faq"][key]
+	return glob.conf.extra["pep.py"]["faq"][key]
 
 def roll(fro, chan, message):
 	maxPoints = 100

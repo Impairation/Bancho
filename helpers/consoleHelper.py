@@ -27,8 +27,11 @@ def printServerStartHeader(asciiArt=True):
 		print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^{}".format(bcolors.ENDC))
 
 	printColored("> Welcome to pep.py osu!bancho server v{}".format(glob.VERSION), bcolors.GREEN)
+	printColored("> Common submodule v{}".format(glob.COMMON_VERSION), bcolors.GREEN)
 	printColored("> Made by the Ripple team", bcolors.GREEN)
 	printColored("> {}https://zxq.co/ripple/pep.py".format(bcolors.UNDERLINE), bcolors.GREEN)
+	printColored("> Custom branch by the osufx team (just Sunpy)", bcolors.GREEN)
+	printColored("> {}https://github.com/osufx/pep.py".format(bcolors.UNDERLINE), bcolors.GREEN)
 	printColored("> Press CTRL+C to exit\n", bcolors.GREEN)
 
 def printNoNl(string):
