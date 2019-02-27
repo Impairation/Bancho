@@ -1,9 +1,22 @@
-## pep.py [![Code Health](https://landscape.io/github/osuripple/pep.py/master/landscape.svg?style=flat)](https://landscape.io/github/osuripple/pep.py/master)
+## pep.py - Modified for the osu! private server: Atoka
 
 - Origin: https://git.zxq.co/ripple/pep.py
 - Mirror: https://github.com/osuripple/pep.py
 
-This is Ripple's bancho server. It handles:
+## Commands we borrowed (yoinked) from cmyui (thx dad) and added to FokaBot (Mirai)
+
+* Linking your Discord from in-game (requires our discord bot.) (`!linkdiscord`)
+* Scheduled Restrictions (`!erestrict, !eurestrict`)
+* Instant Restart (`!ir`)
+* Silent Restart (`!sr`)
+* Allow Donors to change their own name in-game (`!c`)
+* Change Username for Admins (`!changeusername`)
+* Request a map to be ranked from in-game (`!request`)
+* Modifed editMap, allows BATS to rank a map from in-game (`!map`)
+* Announce to #announce (`!announce`)
+
+
+This is Atoka's bancho server. It handles:
 - Client login
 - Online users listing and statuses
 - Public and private chat

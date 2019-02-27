@@ -788,7 +788,7 @@ def report(fro, chan, message):
 					token.enqueue(serverPackets.notification(msg))
 	return False
 
-# cmyui's commands
+# cmyui's commands (modified by Night - Atoka Dev)
 def linkDiscord(fro, chan, message):
 	discordID = message[0]
 	userID = userUtils.getID(fro)
@@ -1183,7 +1183,9 @@ def postAnnouncement(fro, chan, message): # Post to #announce ingame
 	chat.sendMessage(glob.BOT_NAME, "#announce", announcement)
 	return "Announcement successfully sent."
 
-""" Unused - cmyui
+
+""" Unused - cmyui - some are broken, beware - Night
+
 def discordTest(fro, chan, message):
 	try:
 		log.cmyui("Success {} {} {}".format(fro, chan, message), discord="cm")
