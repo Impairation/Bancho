@@ -1,4 +1,3 @@
-
 import json
 import random
 import re
@@ -65,11 +64,8 @@ def roll(fro, chan, message):
 	points = random.randrange(0,maxPoints)
 	return "{} rolls {} points!".format(fro, str(points))
 
-def ask(fro, chan, message):
-	return random.choice(["yes", "no", "maybe"])
-
-def ping(fro, chan, message):
-	return "d"
+#def ask(fro, chan, message):
+#	return random.choice(["yes", "no", "maybe"])
 
 def alert(fro, chan, message):
 	msg = ' '.join(message[:]).strip()
@@ -121,19 +117,12 @@ def kickAll(fro, chan, message):
 		if i in glob.tokens.tokens:
 			glob.tokens.tokens[i].kick()
 
-	return "Whoops! Looks like I killed everyone."
-
-immuneUsers = [1001, 1002]
+	return "Whoops! Looks like I killed everyone"
 
 def kick(fro, chan, message):
 	# Get parameters
 	target = message[0].lower()
 	if target == glob.BOT_NAME.lower():
-		return "Nope."
-
-	# Checks if user is Night or Phil
-	targetUserID = userUtils.getIDSafe(target)
-	if targetUserID in immuneUsers:
 		return "Nope."
 
 	# Get target token and make sure is connected
@@ -175,10 +164,6 @@ def silence(fro, chan, message):
 	# Make sure the user exists
 	if not targetUserID:
 		return "{}: user not found".format(target)
-
-	# Check if user is Night or Phil
-	if targetUserID in immuneUsers:
-		return "Nope."
 
 	# Calculate silence seconds
 	if unit == 's':
@@ -244,10 +229,6 @@ def ban(fro, chan, message):
 	if not targetUserID:
 		return "{}: user not found".format(target)
 
-	# Check if user is Night or Phil
-	if targetUserID in immuneUsers:
-		return "Nope."
-
 	# Set allowed to 0
 	userUtils.ban(targetUserID)
 
@@ -288,10 +269,6 @@ def restrict(fro, chan, message):
 	userID = userUtils.getID(fro)
 	if not targetUserID:
 		return "{}: user not found".format(target)
-
-	# Checks if the user is Night or Phil
-	if targetUserID in immuneUsers:
-		return "Nope."
 
 	# Put this user in restricted mode
 	userUtils.restrict(targetUserID)
@@ -803,7 +780,7 @@ def linkDiscord(fro, chan, message):
 	elif privileges & 4:
 		roleID = 367104098966831114
 	else:
-		return "Sorry but it does not seem like you've donated to Atoka. If this is incorrect, please contact Night."
+		return "Sorry but it does not seem like you've donated to Akatsuki. If this is incorrect, please contact cmyui."
 
 	previousAkatsuki = glob.db.fetch("SELECT verified FROM discord_roles WHERE userid = {}".format(userID))
 	previousDiscord = glob.db.fetch("SELECT verified FROM discord_roles WHERE discordid = {}".format(int(discordID)))
@@ -814,7 +791,7 @@ def linkDiscord(fro, chan, message):
 
 	if previousDiscord:
 		if previousDiscord['verified'] == 1:
-			return "This discord account is already linked (and verified) to another Atoka account."
+			return "This discord account is already linked (and verified) to another Akatsuki account."
 
 	glob.db.execute("INSERT INTO discord_roles (userid, discordid, roleid, verified) VALUES ('{}', '{}', '{}', 0)".format(userID, int(discordID), roleID))
 
@@ -851,7 +828,7 @@ def enqueueRestriction(fro, chan, message):
 	userID = userUtils.getID(fro)
 
 	# Make sure target is not the bot / super admin
-	if targetUserID == 1001 and userID != 1001 :
+	if targetUserID == 1001 and userID != 1001:
 		return "Nice try."
 
 	# Make sure the user exists
@@ -874,7 +851,7 @@ def enqueueRestriction(fro, chan, message):
 
 	# Max time is 4 weeks
 	if flagTime > 2419200:
-		return "Invalid restriction time. Max time is 4 weeks."
+		return "Invalid silence time. Max time is 4 weeks."
 	
 	userUtils.setUserFlags(targetUserID, flagTime, reason, userID)
 
@@ -895,15 +872,15 @@ def silentRestart(fro, chan, message): # for beta moments
 	systemHelper.scheduleShutdown(0, True, delay=5)
 	return False
 
-def changeUsernameSelf(fro, chan, message): # For Donators to change their own usernames
+def changeUsernameSelf(fro, chan, message): # For premium members to change their own usernames
 	newUsername = ' '.join(message[:])
-	userID = userUtils.getIDSafe(userUtils.safeUsername(fro))
+	userID = userUtils.getIDSafe(fro)
 	privileges = userUtils.getPrivileges(userID)
 	tokens = glob.tokens.getTokenFromUsername(userUtils.safeUsername(fro), safe=True, _all=True) # all tokens
 	token = glob.tokens.getTokenFromUsername(userUtils.safeUsername(fro), safe=True) # single token
 
-	if not privileges & 7:
-		token.enqueue(serverPackets.notification("Ingame username changing is an Atoka Donor perk."))
+	if not privileges & 8388608:
+		token.enqueue(serverPackets.notification("Ingame username changing is an Akatsuki Premium donor perk."))
 		return False
 
 	# Get safe username
@@ -918,7 +895,7 @@ def changeUsernameSelf(fro, chan, message): # For Donators to change their own u
 
 	# Ensure they are online (since it's only nescessary to kick/alert them if they're online), then do so if they are.
 	if len(tokens) == 0:
-		return "Something went wrong when grabbing your token(s). Please re-login and try again. If this persists, report the error to Night(#8144)."
+		return "Something went wrong when grabbing your token(s). Please re-login and try again. If this persists, report the error to cmyui(#0425)."
 
 	# Kick users and tell them their username has been changed
 	for i in tokens:
@@ -928,11 +905,11 @@ def changeUsernameSelf(fro, chan, message): # For Donators to change their own u
 	log.rap(userID, "has changed their username to {}.".format(newUsername))
 	return "Name successfully changed."
 
-def nightSwitch(fro, chan, message): # Allow night to switch between perm settings
+def cmyuiSwitch(fro, chan, message): # Allow cmyui to switch between perm settings
 	newPrivileges = int(message[0])
 	userID = userUtils.getIDSafe(fro)
 
-	if userID != 1002:
+	if userID != 1001:
 		return "Funny joke."
 
 	if newPrivileges > 16777215 or newPrivileges < 0:
@@ -987,10 +964,12 @@ def nightSwitch(fro, chan, message): # Allow night to switch between perm settin
 		r += "UserTournamentStaff (2097152); "
 	if newPrivileges & 4194304:
 		r += "AdminCaker (4194304); "
+	if newPrivileges & 8388608:
+		r += "Premium (8388608); "
 	r += "."
 
-	if userID == 1002:
-		glob.db.execute("UPDATE users SET privileges = {} WHERE id = 1002;".format(newPrivileges))
+	if userID == 1001:
+		glob.db.execute("UPDATE users SET privileges = {} WHERE id = 1001;".format(newPrivileges))
 	else:
 		return "No. and how did you get this far?"
 
@@ -1002,16 +981,13 @@ def changeUsername(fro, chan, message): # Change a users username, ingame.
 	newUsername = ' '.join(message[1:]).strip()
 	targetUserID = userUtils.getIDSafe(target)
 	userID = userUtils.getIDSafe(fro)
-	privileges = userUtils.getPrivileges(targetUserID) # grab this to make admins not able to change non-donor's usernames. nazi mode.
-
-	if targetUserID == 1002 and userID != 1002:
-		return "Nope."
+	privileges = userUtils.getPrivileges(targetUserID) # grab this to make admins not able to change non-premium's usernames. nazi mode.
 
 	if targetUserID == 1001 and userID != 1001:
 		return "Nope."
 
-#	if not privileges & 8388608: # Stops username changes to non-donor's. nazi mode.
-#		return "The target user is not an Atoka Donor."
+	if not privileges & 8388608:
+		return "The target user is not an Akatsuki Premium member."
 
 	# Get safe username
 	newUsernameSafe = userUtils.safeUsername(newUsername)
@@ -1050,7 +1026,7 @@ def requestMap(fro, chan, message): # Splitting these up due to bancho explosion
 	privileges = userUtils.getPrivileges(userID)
 
 	if chan.startswith('#') and chan != '#request' and not privileges & 8388608: # only run in pms or #request, unless premium
-		return "Map requests are not permitted in regular channels, please do so in #request, or a PM to Mirai."
+		return "Map requests are not permitted in regular channels, please do so in #request, or a PM to Charlotte."
 
 
 	# Grab beatmapData from db
@@ -1090,15 +1066,15 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 	privileges = userUtils.getPrivileges(userID)
 	token = glob.tokens.getTokenFromUserID(userID)
 
-	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
+	# Only allow users to request maps in #request channel. Heavily reduced spam!
 	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
-		return "Map ranking is not permitted in regular channels, please do so in PMs with Mirai (or #admin if administrator)."
+		return "Map ranking is not permitted in regular channels, please do so in PMs with Charlotte (or #admin if administrator)."
 
 	# Silence the target for a brief moment. This is needed because threading issues dddddddd
 	if token is not None:
 		token.silence(10, "Map Request: Auto silence")
 	else:
-		return "Somehow the server could not grab your token. Please report this directly to Night."
+		return "Somehow the server could not grab your token. Please report this directly to cmyui."
 
 	# Grab beatmapData from db
 	try:
@@ -1129,201 +1105,8 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 	if privileges & 256:
 
 		# Figure out which ranked status we're requesting to
-		if 'r' in rankType.lower() and 'u' not in rankType.lower():
-			rankType = 'rank'
-			rankTypeID = 2
-			freezeStatus = 1
-		elif 'l' in rankType.lower():
-			rankType = 'love'
-			rankTypeID = 5
-			freezeStatus = 1
-		elif 'u' in rankType.lower() or 'g' in rankType.lower():
-			rankType = 'unrank'
-			rankTypeID = 0
-			freezeStatus = 0
-		else:
-			return "Please enter a valid ranked status (rank, love, unrank)."
-
-		if beatmapData['ranked'] == rankTypeID:
-			return "This map is already {}ed".format(rankType)
 
 
-		if mapType == 'set':
-			numDiffs = glob.db.fetch("SELECT COUNT(id) FROM beatmaps WHERE beatmapset_id = {}".format(beatmapData["beatmapset_id"]))
-			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmapset_id = {} LIMIT {}".format(rankTypeID, freezeStatus, userID, beatmapData["beatmapset_id"], numDiffs["COUNT(id)"]))
-		else:
-			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmap_id = {} LIMIT 1".format(rankTypeID, freezeStatus, userID, mapID ))
-
-		# Announce / Log to AP logs when ranked status is changed
-		log.rap(userID, "has {}ed beatmap ({}): {} ({}), on gamemode {}.".format(rankType, mapType, beatmapData["song_name"], mapID, gameMode), True)
-		if mapType.lower() == 'set':
-			msg = "{} has {}ed beatmap set: [https://osu.ppy.sh/s/{} {}] on gamemode {}".format(fro, rankType, beatmapData["beatmapset_id"], beatmapData["song_name"], gameMode)
-		else:
-			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}] on gamemode {}".format(fro, rankType, mapID, beatmapData["song_name"], gameMode)
-
-		chat.sendMessage(glob.BOT_NAME, "#announce", msg)
-	else:
-		msg = "The request command has been changed to !request. Please use that instead, the format is '!request set/map 256123'"
-	return msg
-
-#def cleanVivid(fro, chan, message): # Clear vivids leaderboards 4head
-#	userID = userUtils.getID(fro)
-#
-#	if userID != 1001:
-#		return "No."
-#
-#	glob.db.execute("""DELETE FROM scores WHERE beatmap_md5 = '1cf5b2c2edfafd055536d2cefcb89c0e';
-#					   DELETE FROM scores_relax WHERE beatmap_md5 = '1cf5b2c2edfafd055536d2cefcb89c0e';
-#				""")
-#	return "Success. [https://osu.ppy.sh/b/315 Vivid]!"
-
-
-def postAnnouncement(fro, chan, message): # Post to #announce ingame
-	announcement = ' '.join(message[0:])
-	chat.sendMessage(glob.BOT_NAME, "#announce", announcement)
-	return "Announcement successfully sent."
-
-""" Unused - cmyui
-def discordTest(fro, chan, message):
-	try:
-		log.cmyui("Success {} {} {}".format(fro, chan, message), discord="cm")
-		return "success."
-	except:
-		return "not success. :("
-	return False
-def discordUserInfo(fro, chan, message): # ahahaha - cmyui
-	target = message[0].lower()
-	# Make sure the user exists
-	targetUserID = userUtils.getIDSafe(target)
-	userID = userUtils.getID(fro)
-	if not targetUserID:
-		return "{}: user not found.".format(target)
-	# Make sure target is not the bot
-	if userID != 1001:
-		return "You have insufficient permissions to perform this request. Have (appledotcom)[https://youtu.be/h1pSSrmdEtw] instead. <3"
-	# Perform the request :)
-	userUtils.collectUserInfo(targetUserID)
-	return "Request successfully performed (uID: {}).".format(targetUserID)
-def runSQL(fro, chan, message): # Obviously not the safest command.. Run SQL queries ingame!
-	messages = [m.lower() for m in message]
-	command = ' '.join(message[0:])
-	userID = userUtils.getID(fro)
-	if userID == 1001: # Just cmyui owo
-		if len(command) < 10: # Catch this so it doesnt say it failed when it kinda didnt even though it did what the fuck am i typing anymore
-			return "Query length too short.. You're probably doing something wrong."
-		try:
-			glob.db.execute(command)
-		except:
-			return "Could not successfully execute query"
-	else:
-		return "You lack sufficient permissions to execute this query"
-	return "Query executed successfully"
-def promoteUser(fro, chan, message): # Set a users privileges ingame
-	messages = [m.lower() for m in message]
-	target = message[0]
-	privilege = message[1]
-	targetUserID = userUtils.getIDSafe(target)
-	userID = userUtils.getID(fro)
-	if not targetUserID:
-		return "{}: user not found".format(target)
-	if privilege == 'user':
-		priv = 3
-	elif privilege == 'bat':
-		priv = 267
-	elif privilege == 'mod':
-		priv = 786763
-	elif privilege == 'tournamentstaff':
-		priv = 2097159
-	elif privilege == 'admin':
-		priv = 7262719
-	elif privilege == 'developer':
-		priv = 3145727
-	elif privilege == 'owner':
-		priv = 7340031
-	else:
-		return "Invalid rankname (bat/mod/tournamentstaff/admin/developer/owner)"
-	try:
-		glob.db.execute("UPDATE users SET privileges = %s WHERE id = %s LIMIT 1", [priv, targetUserID])
-	except:
-		return "An unknown error has occured while trying to set role."
-	# Log message
-	log.rap(userID, "set {} to {}.".format(target, privilege), True)
-	msg = "{}'s rank has been set to: {}".format(target, privilege)
-	chat.sendMessage(glob.BOT_NAME, "#announce", msg)
-	return msg
-def recommendMap(fro, chan, message): # too lazy to finish this - 2018-12-08
-	messages = [m.lower() for m in message]
-	diffmode = message[0]
-	userID = userUtils.getIDSafe(fro)
-	try:
-		if chan.startswith("#"):
-			return False
-		# Probably the hardest thing I've ever attempted to code (made by cmyui winky face emoji :cowboy:)
-		# Currently only works on nomod because idk how to code
-		# Specify gamemode. recommend PP to the User
-		if not diffmode.isdigit():
-			if diffmode == "std":
-				modeName = "std"
-				modeID = 0
-			elif diffmode == "taiko":
-				modeName = "taiko"
-				modeID = 1
-			elif diffmode == "ctb":
-				modeName = "ctb"
-				modeID = 2
-			elif diffmode == "mania":
-				modeName = "mania"
-				modeID = 3
-			else:
-				return "Please enter a valid gamemode."
-			# Calculate what sort of PP amounts we should be recommending based on the average of their top 10 plays
-			userPPData = glob.db.fetch("SELECT AVG(pp) FROM (SELECT pp FROM scores WHERE userid = {} AND play_mode = {} ORDER BY pp DESC LIMIT 10) AS topplays".format(userID, modeID))
-			#Determine what amount of PP we should recommend them
-			rawrecommendedPP = userPPData.values()
-			recommendedPP = 0
-			for val in rawrecommendedPP:
-				recommendedPP += val
-			# Determine the amount of variance
-			ppVariance = recommendedPP / 15
-			ppBelow = recommendedPP - ppVariance
-			ppAbove = recommendedPP + ppVariance
-			# pp100=data["pp"][0], pp99=data["pp"][1], pp98=data["pp"][2], pp95=data["pp"][3]
-			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND ((pp_95 > {} AND pp_95 < {}) OR (pp_98 > {} AND pp_98 < {}) OR (pp_99 > {} AND pp_99 < {}) OR (pp_100 > {} AND pp_100 < {})) AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, modeID))
-					# Send request to LETS api
-			resp = requests.get("http://127.0.0.1:5002/letsapi/v1/pp?b={}".format(recommendedMaps["beatmap_id"]), timeout=10).text
-			data = json.loads(resp)
-			# Make sure status is in response data
-			if "status" not in data:
-				raise exceptions.apiException
-			# Make sure status is 200
-			if data["status"] != 200:
-				if "message" in data:
-					return "Error in LETS API call ({}).".format(data["message"])
-				else:
-					raise exceptions.apiException
-			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | Current recommendations: {}pp | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedPP, recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
-		else: # Do not specify gamemode. Do not recommend PP as they are picking a star rating
-			findMode = glob.db.fetch("SELECT favourite_mode FROM users_stats where id = {}".format(userID))
-			if findMode["favourite_mode"] == 0:
-				modeName = "std"
-				modeID = 0
-			elif findMode["favourite_mode"] == 1:
-				modeName = "taiko"
-				modeID = 1
-			elif findMode["favourite_mode"] == 2:
-				modeName = "ctb"
-				modeID = 2
-			elif findMode["favourite_mode"] == 3:
-				modeName = "mania"
-				modeID = 3
-			diffmodeplus = int(diffmode) + 1
-			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND difficulty_{} > {} AND difficulty_{} < {} AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, modeName, diffmode, modeName, diffmodeplus, modeID))
-			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
-	except:
-		return "Please use the correct syntax: !r <mode or * rating (will predict your main mode)>."
-	"""
-
-# Multiplayer Commands
 def getMatchIDFromChannel(chan):
 	if not chan.lower().startswith("#multi_"):
 		raise exceptions.wrongChannelException()
@@ -1571,7 +1354,7 @@ def multiplayer(fro, chan, message):
 		password = generalUtils.stringMd5(generalUtils.randomString(32))
 		_match = glob.matches.matches[getMatchIDFromChannel(chan)]
 		_match.changePassword(password)
-		return "Match password has been changed to a random one."
+		return "Match password has been changed to a random one"
 
 	def mpMods():
 		if len(message) < 2:
@@ -1607,10 +1390,10 @@ def multiplayer(fro, chan, message):
 
 	def mpTeam():
 		if len(message) < 3:
-			raise exceptions.invalidArgumentsException("Wrong syntax: !mp team <username> <color>")
+			raise exceptions.invalidArgumentsException("Wrong syntax: !mp team <username> <colour>")
 		username = message[1].strip()
 		if not username:
-			raise exceptions.invalidArgumentsException("Please provide a username.")
+			raise exceptions.invalidArgumentsException("Please provide a username")
 		colour = message[2].lower().strip()
 		if colour not in ["red", "blue"]:
 			raise exceptions.invalidArgumentsException("Team colour must be red or blue")
@@ -1690,35 +1473,34 @@ def multiplayer(fro, chan, message):
 			"mods": mpMods,
 			"team": mpTeam,
 			"settings": mpSettings,
-                        "scorev": mpScoreV,
+            "scorev": mpScoreV,
 			"help": mpHelp
 		}
 		requestedSubcommand = message[0].lower().strip()
 		if requestedSubcommand not in subcommands:
-			raise exceptions.invalidArgumentsException("Invalid subcommand.")
+			raise exceptions.invalidArgumentsException("Invalid subcommand")
 		return subcommands[requestedSubcommand]()
 	except (exceptions.invalidArgumentsException, exceptions.userNotFoundException, exceptions.invalidUserException) as e:
 		return str(e)
 	except exceptions.wrongChannelException:
-		return "This command only works in multiplayer chat channels."
+		return "This command only works in multiplayer chat channels"
 	except exceptions.matchNotFoundException:
-		return "Match not found."
+		return "Match not found"
 	except:
 		raise
 
-# Switch a Player to a different Bancho server.
 def switchServer(fro, chan, message):
 	# Get target user ID
 	target = message[0]
 	newServer = message[1].strip()
 	if not newServer:
-		return "Invalid server IP."
+		return "Invalid server IP"
 	targetUserID = userUtils.getIDSafe(target)
 	userID = userUtils.getID(fro)
 
 	# Make sure the user exists
 	if not targetUserID:
-		return "{}: user not found.".format(target)
+		return "{}: user not found".format(target)
 
 	# Connect the user to the end server
 	userToken = glob.tokens.getTokenFromUserID(userID, ignoreIRC=True, _all=False)
@@ -1726,22 +1508,20 @@ def switchServer(fro, chan, message):
 
 	# Disconnect the user from the origin server
 	# userToken.kick()
-	return "{} has been connected to {}.".format(target, newServer)
+	return "{} has been connected to {}".format(target, newServer)
 
-# Send a Message across a player's screen and fail them if they are playing a map.
 def rtx(fro, chan, message):
 	target = message[0]
 	message = " ".join(message[1:]).strip()
 	if not message:
-		return "Invalid message."
+		return "Invalid message"
 	targetUserID = userUtils.getIDSafe(target)
 	if not targetUserID:
-		return "{}: user not found.".format(target)
+		return "{}: user not found".format(target)
 	userToken = glob.tokens.getTokenFromUserID(targetUserID, ignoreIRC=True, _all=False)
 	userToken.enqueue(serverPackets.rtx(message))
-	return "RIP {}. Welp, I guess we're gonna do it. 👌".format(target)
+	return "RIP {}. Welp, I guess we're gonna do it. :ok_hand:".format(target)
 
-# Returns a bloodcat link for the /np in #spectator
 def bloodcat(fro, chan, message):
 	try:
 		matchID = getMatchIDFromChannel(chan)
@@ -1763,7 +1543,6 @@ def bloodcat(fro, chan, message):
 		beatmapID = spectatorHostToken.beatmapID
 	return bloodcatMessage(beatmapID)
 
-# Custom meme commands -Night
 def mokobe(fro, chan, message):
 	return "Mokobe is such a slave you could call him a second me."
 
@@ -1773,9 +1552,6 @@ def night(fro, chan, message):
 def phil(fro, chan, message):
 	return "Phil is my lord and savior. Enough said."
 
-def mirai(fro, chan, message):
-	return "Yep, thats me! It's not like I want to help you or anything. Baka. >_> (!help)"
-
 """
 Commands list
 
@@ -1784,14 +1560,9 @@ callback: function to call when the command is triggered. Optional.
 response: text to return when the command is triggered. Optional.
 syntax: command syntax. Arguments must be separated by spaces (eg: <arg1> <arg2>)
 privileges: privileges needed to execute the command. Optional.
-
 """
-
 commands = [
 	{
-		"trigger": "!mirai",
-		"callback": mirai
-	}, {
 		"trigger": "!roll",
 		"callback": roll
 	}, {
@@ -1799,35 +1570,22 @@ commands = [
 		"syntax": "<name>",
 		"callback": faq
 	}, {
-#		"trigger": "!cv",
-#		"privileges": privileges.ADMIN_CAKER,
-#		"callback": cleanVivid
-#	}, {
-		"trigger": "!d",
-		"callback": ping
-	}, {
 		"trigger": "!report",
 		"callback": report
 	}, {
 		"trigger": "!help",
-		"response": "Click (here)[https://atoka.pw/doc/mirai] for Mirai's full command list"
+		"response": "Click (here)[https://atoka.pw/index.php?p=16&id=4] for the full command list"
+	}, #{
+		#"trigger": "!ask",
+		#"syntax": "<question>",
+		#"callback": ask
+	#}, {
+	{
+		"trigger": "!mm00",
+		"callback": mm00
 	}, {
-		"trigger": "!announce",
-		"syntax": "<announcement>",
-		"privileges": privileges.ADMIN_SEND_ALERTS,
-		"callback": postAnnouncement
-	}, {
-		"trigger": "!linkdiscord",
-		"syntax": "<discordID>",
-		"callback": linkDiscord
-	}, {
-		"trigger": "!map",
-		"syntax": "<rank/love/unrank> <set/map> <ID> <gamemode>",
-		"callback": editMap
-	}, {
-		"trigger": "!request",
-		"syntax": "<set/map> <ID>",
-		"callback": requestMap
+		"trigger": "!rules",
+		"response": "Please make sure to check (Atoka's Rules)[https://atoka.pw/doc/rules] before you get in trouble!"
 	}, {
 		"trigger": "!alert",
 		"syntax": "<message>",
@@ -1844,7 +1602,7 @@ commands = [
 		"callback": moderated
 	}, {
 		"trigger": "!kickall",
-		"privileges": privileges.ADMIN_CAKER,
+		"privileges": privileges.ADMIN_MANAGE_SERVERS,
 		"callback": kickAll
 	}, {
 		"trigger": "!kick",
@@ -1852,24 +1610,14 @@ commands = [
 		"privileges": privileges.ADMIN_KICK_USERS,
 		"callback": kick
 	}, {
-		"trigger": "!mirai reconnect",
+		"trigger": "!bot reconnect",
 		"privileges": privileges.ADMIN_MANAGE_SERVERS,
 		"callback": fokabotReconnect
 	}, {
 		"trigger": "!silence",
-		"syntax": "<target> <amount> <unit(s/m/h/d/w)> <reason>",
+		"syntax": "<target> <amount> <unit(s/m/h/d)> <reason>",
 		"privileges": privileges.ADMIN_SILENCE_USERS,
 		"callback": silence
-	}, {
-		"trigger": "!erestrict",
-		"syntax": "<target> <amount> <unit(s/m/h/d/w)> <reason>",
-		"privileges": privileges.ADMIN_BAN_USERS,
-		"callback": enqueueRestriction
-	}, {
-		"trigger": "!eunrestrict",
-		"syntax": "<target>",
-		"privileges": privileges.ADMIN_BAN_USERS,
-		"callback": unenqueueRestriction
 	}, {
 		"trigger": "!removesilence",
 		"syntax": "<target>",
@@ -1897,7 +1645,7 @@ commands = [
 		"callback": systemStatus
 	}, {
 		"trigger": "!ban",
-		"syntax": "<target> <reason>",
+		"syntax": "<target>",
 		"privileges": privileges.ADMIN_BAN_USERS,
 		"callback": ban
 	}, {
@@ -1907,13 +1655,13 @@ commands = [
 		"callback": unban
 	}, {
 		"trigger": "!restrict",
-		"syntax": "<target> <reason>",
-		"privileges": privileges.ADMIN_CHAT_MOD,
+		"syntax": "<target>",
+		"privileges": privileges.ADMIN_BAN_USERS,
 		"callback": restrict
 	}, {
 		"trigger": "!unrestrict",
 		"syntax": "<target>",
-		"privileges": privileges.ADMIN_CHAT_MOD,
+		"privileges": privileges.ADMIN_BAN_USERS,
 		"callback": unrestrict
 	}, {
 		"trigger": "\x01ACTION is listening to",
@@ -1932,16 +1680,9 @@ commands = [
 		"trigger": "!last",
 		"callback": tillerinoLast
 	}, {
-		"trigger": "!sr",
-		"privileges": privileges.ADMIN_MANAGE_SERVERS,
-		"callback": silentRestart
-	}, {
 		"trigger": "!ir",
 		"privileges": privileges.ADMIN_MANAGE_SERVERS,
 		"callback": instantRestart
-	}, {
-		"trigger": "!bloodcat",
-		"callback": bloodcat
 	}, {
 		"trigger": "!pp",
 		"callback": pp
@@ -1955,29 +1696,32 @@ commands = [
 		"callback": multiplayer
 	}, {
 		"trigger": "!switchserver",
-		"privileges": privileges.ADMIN_CAKER,
+		"privileges": privileges.ADMIN_MANAGE_SERVERS,
 		"syntax": "<username> <server_address>",
 		"callback": switchServer
 	}, {
 		"trigger": "!rtx",
-		"privileges": privileges.ADMIN_CAKER,
+		"privileges": privileges.ADMIN_MANAGE_USERS,
 		"syntax": "<username> <message>",
 		"callback": rtx
 	}, {
-		"trigger": "!changeusername",
-		"privileges": privileges.ADMIN_MANAGE_USERS,
-		"syntax": "<username> <newUsername>",
-		"callback": changeUsername
+		"trigger": "!bloodcat",
+		"callback": bloodcat
 	}, {
-		"trigger": "!c",
-		"privileges": privileges.USER_DONOR,
-		"syntax": "<newUsername>",
-		"callback": changeUsernameSelf
-        }, {
 		"trigger": "!night",
-		"syntax": "<privileges>",
-		"callback": nightSwitch
+		"callback": night
+	}, {
+		"trigger": "!phil",
+		"callback": phil
+	}, {
+		"trigger": "!mokobe",
+		"callback": mokobe
 	}
+	#
+	#	"trigger": "!acc",
+	#	"callback": tillerinoAcc,
+	#	"syntax": "<accuarcy>"
+	#}
 ]
 
 # Commands list default values
@@ -1985,4 +1729,4 @@ for cmd in commands:
 	cmd.setdefault("syntax", "")
 	cmd.setdefault("privileges", None)
 	cmd.setdefault("callback", None)
-	cmd.setdefault("response", "ok stop digging this deep")
+	cmd.setdefault("response", "u w0t m8?")

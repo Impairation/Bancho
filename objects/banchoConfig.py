@@ -33,10 +33,10 @@ class banchoConfig:
 		self.config["freeDirect"] = generalUtils.stringToBool(glob.db.fetch("SELECT value_int FROM bancho_settings WHERE name = 'free_direct'")["value_int"])
 		mainMenuIcon = glob.db.fetch("SELECT file_id, url FROM main_menu_icons WHERE is_current = 1 LIMIT 1")
 		if mainMenuIcon is None:
-			self.config["menuIcon"] = ""
+			self.config["menuIcon"] = "https://atoka.pw/static/logos/logo-dark.png"
 		else:
 			imageURL = "https://i.ppy.sh/{}.png".format(mainMenuIcon["file_id"])
-			self.config["menuIcon"] = "{}|{}".format(imageURL, mainMenuIcon["url"])
+			self.config["menuIcon"] = "https://atoka.pw/static/logos/logo-dark.png"
 		self.config["loginNotification"] = glob.db.fetch("SELECT value_string FROM bancho_settings WHERE name = 'login_notification'")["value_string"]
 
 
