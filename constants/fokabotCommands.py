@@ -788,7 +788,7 @@ def report(fro, chan, message):
 					token.enqueue(serverPackets.notification(msg))
 	return False
 
-# cmyui's commands (modified by Night - Atoka Dev)
+# cmyui's commands
 def linkDiscord(fro, chan, message):
 	discordID = message[0]
 	userID = userUtils.getID(fro)
@@ -905,6 +905,10 @@ def changeUsernameSelf(fro, chan, message): # For Donators to change their own u
 	if not privileges & 7:
 		token.enqueue(serverPackets.notification("Ingame username changing is an Atoka Donor perk."))
 		return False
+	if newUsername == 'Phil' and userID != 1001:
+		return "Nope."
+	if newUsername == 'Night' and UserID != 1002:
+		return "Nope."
 
 	# Get safe username
 	newUsernameSafe = userUtils.safeUsername(newUsername)
@@ -1004,7 +1008,7 @@ def changeUsername(fro, chan, message): # Change a users username, ingame.
 	userID = userUtils.getIDSafe(fro)
 	privileges = userUtils.getPrivileges(targetUserID) # grab this to make admins not able to change non-donor's usernames. nazi mode.
 
-	if targetUserID == 1002 and userID != 1002:
+	if targetUserID == 1002 and userID != 1001:
 		return "Nope."
 
 	if targetUserID == 1001 and userID != 1001:
@@ -1183,9 +1187,7 @@ def postAnnouncement(fro, chan, message): # Post to #announce ingame
 	chat.sendMessage(glob.BOT_NAME, "#announce", announcement)
 	return "Announcement successfully sent."
 
-
-""" Unused - cmyui - some are broken, beware - Night
-
+""" Unused - cmyui
 def discordTest(fro, chan, message):
 	try:
 		log.cmyui("Success {} {} {}".format(fro, chan, message), discord="cm")
@@ -1962,7 +1964,7 @@ commands = [
 		"callback": switchServer
 	}, {
 		"trigger": "!rtx",
-		"privileges": privileges.ADMIN_CAKER,
+		"privileges": privileges.USER_TOURNAMENT_STAFF,
 		"syntax": "<username> <message>",
 		"callback": rtx
 	}, {
