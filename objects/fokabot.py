@@ -14,13 +14,14 @@ npRegex = re.compile("^https?:\\/\\/osu\\.ppy\\.sh\\/b\\/(\\d*)")
 def connect():
 	"""
 	Connect FokaBot to Bancho.
-	You can change FokaBot's name in RAP and FokaBot will still work as intended.
 
 	:return:
 	"""
 	glob.BOT_NAME = userUtils.getUsername(999)
 	token = glob.tokens.addToken(999)
 	token.actionID = actions.IDLE
+	token.country = 244
+	token.actionText = " Enjoy your time on Vipsu!"
 	glob.streams.broadcast("main", serverPackets.userPanel(999))
 	glob.streams.broadcast("main", serverPackets.userStats(999))
 

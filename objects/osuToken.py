@@ -30,9 +30,7 @@ class token:
 		self.username = userUtils.getUsername(self.userID)
 		self.safeUsername = userUtils.getSafeUsername(self.userID)
 		self.privileges = userUtils.getPrivileges(self.userID)
-		self.admin = userUtils.isInPrivilegeGroup(self.userID, "developer")\
-					 or userUtils.isInPrivilegeGroup(self.userID, "administrator")\
-					 or userUtils.isInPrivilegeGroup(self.userID, "chat mod")
+		self.admin = userUtils.isInAnyPrivilegeGroup(self.userID, ("developer", "community manager", "chat mod", "premium"))
 		self.irc = irc
 		self.kicked = False
 		self.restricted = userUtils.isRestricted(self.userID)
@@ -71,6 +69,7 @@ class token:
 		self.actionMd5 = ""
 		self.actionMods = 0
 		self.gameMode = gameModes.STD
+		self.relax = 0
 		self.beatmapID = 0
 		self.rankedScore = 0
 		self.accuracy = 0.0
@@ -226,7 +225,7 @@ class token:
 					self.enqueue(serverPackets.fellowSpectatorJoined(glob.tokens.tokens[i].userID))
 
 			# Log
-			log.info("{} is spectating {}".format(self.username, host.username))
+			log.info("{} is spectating {}.".format(self.username, host.username))
 		finally:
 			self._spectLock.release()
 
@@ -269,7 +268,7 @@ class token:
 					hostToken.leaveStream(streamName)
 
 				# Console output
-				log.info("{} is no longer spectating {}. Current spectators: {}".format(self.username, self.spectatingUserID, hostToken.spectators))
+				log.info("{} is no longer spectating {}. Current spectators: {}.".format(self.username, self.spectatingUserID, hostToken.spectators))
 
 			# Part #spectator channel
 			chat.partChannel(token=self, channel="#spect_{}".format(self.spectatingUserID), kick=True, force=True)
@@ -386,7 +385,7 @@ class token:
 
 		:param seconds: silence length in seconds. If None, get it from db. Default: None
 		:param reason: silence reason. Default: empty string
-		:param author: userID of who has silenced the user. Default: 999 (FokaBot)
+		:param author: userID of who has silenced the user. Default: 999 (Aika)
 		:return:
 		"""
 		if seconds is None:
@@ -437,6 +436,24 @@ class token:
 		"""
 		return max(0, self.silenceEndTime-int(time.time()))
 
+	def rxupdateCachedStats(self):
+		"""
+		Update all cached stats for this token
+
+		:return:
+		"""
+		stats = userUtils.getRelaxStats(self.userID, self.gameMode)
+		log.debug(str(stats))
+		if stats is None:
+			log.warning("Stats query returned None.")
+			return
+		self.rankedScore = stats["rankedScore"]
+		self.accuracy = stats["accuracy"]/100
+		self.playcount = stats["playcount"]
+		self.totalScore = stats["totalScore"]
+		self.gameRank = stats["gameRank"]
+		self.pp = stats["pp"]
+		
 	def updateCachedStats(self):
 		"""
 		Update all cached stats for this token
@@ -457,7 +474,7 @@ class token:
 
 	def checkRestricted(self):
 		"""
-		Check if this token is restricted. If so, send fokabot message
+		Check if this token is restricted. If so, send Aika message
 
 		:return:
 		"""
@@ -481,17 +498,17 @@ class token:
 
 	def setRestricted(self):
 		"""
-		Set this token as restricted, send FokaBot message to user
+		Set this token as restricted, send Aika message to user
 		and send offline packet to everyone
 
 		:return:
 		"""
 		self.restricted = True
-		chat.sendMessage(glob.BOT_NAME, self.username, "Your account is currently in restricted mode. Please visit ripple's website for more information.")
+		chat.sendMessage(glob.BOT_NAME, self.username, "Your account is currently in restricted mode. Please visit Akatsuki's website for more information.")
 
 	def resetRestricted(self):
 		"""
-		Send FokaBot message to alert the user that he has been unrestricted
+		Send Aika message to alert the user that he has been unrestricted
 		and he has to log in again.
 
 		:return:
