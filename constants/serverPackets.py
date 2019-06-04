@@ -16,12 +16,12 @@ def forceUpdate():
 
 def loginBanned():
 	packets = packetHelper.buildPacket(packetIDs.server_userID, [[-1, dataTypes.SINT32]])
-	packets += notification("You are banned. You can appeal after one month since your ban by sending an email to support@atoka.pw from the email address you've used to sign up.")
+	packets += notification("You are banned. You can appeal after one month since your ban by sending an email to s.vipsu@gmail.com from the email address you've used to sign up.")
 	return packets
 
 def loginLocked():
 	packets = packetHelper.buildPacket(packetIDs.server_userID, [[-1, dataTypes.SINT32]])
-	packets += notification("Your account is locked. You can't log in, but your profile and scores are still visible from the website. If you want to unlock your account, send an email to support@atoka.pw from the email address you've used to sign up.")
+	packets += notification("Your account is locked. You can't log in, but your profile and scores are still visible from the website. If you want to unlock your account, send an email to s.vipsu@gmail.com from the email address you've used to sign up.")
 	return packets
 
 def loginError():
@@ -95,11 +95,15 @@ def userPanel(userID, force = False):
 	# Only admins and normal users are currently supported
 	userRank = 0
 	if username == glob.BOT_NAME:
-		userRank |= userRanks.MOD
+		userRank |= userRanks.ADMIN
+	elif userID == 1000:
+		userRank |= userRanks.PEPPY		
 	elif userUtils.isInPrivilegeGroup(userID, "developer"):
 		userRank |= userRanks.ADMIN
-	elif userUtils.isInPrivilegeGroup(userID, "chat mod"):
+	elif userUtils.isInPrivilegeGroup(userID, "Community Manager"):
 		userRank |= userRanks.MOD
+	elif userUtils.isInPrivilegeGroup(userID, "bat"):
+		userRank |= userRanks.BAT		
 	elif (userToken.privileges & privileges.USER_DONOR) > 0:
 		userRank |= userRanks.SUPPORTER
 	else:
