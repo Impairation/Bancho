@@ -3,6 +3,8 @@ import json
 import random
 import re
 import threading
+import sys
+import traceback
 
 import requests
 import time
@@ -20,6 +22,11 @@ from objects import fokabot
 from objects import glob
 from helpers import chatHelper as chat
 from common.web import cheesegull
+from urllib.parse import urlencode
+from datetime import datetime, timedelta
+from secret.discord_hooks import Webhook
+from common.ripple import webhookHelper
+
 
 
 def bloodcatMessage(beatmapID):
@@ -46,7 +53,7 @@ return the message or **False** if there's no response by the bot
 TODO: Change False to None, because False doesn't make any sense
 """
 def instantRestart(fro, chan, message):
-	glob.streams.broadcast("main", serverPackets.notification("We are restarting Bancho. Be right back!"))
+	glob.streams.broadcast("main", serverPackets.notification("We are restarting Vipsu. Be right back!"))
 	systemHelper.scheduleShutdown(0, True, delay=5)
 	return False
 
@@ -70,6 +77,15 @@ def ask(fro, chan, message):
 
 def ping(fro, chan, message):
 	return "d"
+	
+def restrictme(fro, chan, message):
+	return "You`re now Restricted congratulations.\n HAHA\n i love trolling."	
+	
+def oof(fro, chan, message):
+	return "oofio u suck hehe."		
+
+def bruh(fro, chan, message):
+	return "brah!"			
 
 def alert(fro, chan, message):
 	msg = ' '.join(message[:]).strip()
@@ -151,7 +167,7 @@ def kick(fro, chan, message):
 def fokabotReconnect(fro, chan, message):
 	# Check if fokabot is already connected
 	if glob.tokens.getTokenFromUserID(999) is not None:
-		return "{} is already connected to Atoka".format(glob.BOT_NAME)
+		return "{} is already connected to Vipsu".format(glob.BOT_NAME)
 
 	# Fokabot is not connected, connect it
 	fokabot.connect()
@@ -324,7 +340,7 @@ def unrestrict(fro, chan, message):
 
 def restartShutdown(restart):
 	"""Restart (if restart = True) or shutdown (if restart = False) pep.py safely"""
-	msg = "We are performing some maintenance. Bancho will {} in 5 seconds. Thank you for your patience.".format("restart" if restart else "shutdown")
+	msg = "We are performing some maintenance. Vipsu will {} in 5 seconds. Thank you for your patience.".format("restart" if restart else "shutdown")
 	systemHelper.scheduleShutdown(5, restart, msg)
 	return msg
 
@@ -336,7 +352,7 @@ def systemShutdown(fro, chan, message):
 
 def systemReload(fro, chan, message):
 	glob.banchoConf.reload()
-	return "Atoka (Bancho) settings reloaded!"
+	return "Vipsu (Bancho) settings reloaded!"
 
 def systemMaintenance(fro, chan, message):
 	# Turn on/off bancho maintenance
@@ -361,7 +377,7 @@ def systemMaintenance(fro, chan, message):
 				if not value.admin:
 					who.append(value.userID)
 
-		glob.streams.broadcast("main", serverPackets.notification("Our bancho server is in maintenance mode. Please try to login again later."))
+		glob.streams.broadcast("main", serverPackets.notification("Our Vipsu server is in maintenance mode. Please try to login again later."))
 		glob.tokens.multipleEnqueue(serverPackets.loginError(), who)
 		msg = "The server is now in maintenance mode!"
 	else:
@@ -382,10 +398,10 @@ def systemStatus(fro, chan, message):
 		letsVersion = "\_(xd)_/"
 	else:
 		letsVersion = letsVersion.decode("utf-8")
-	msg = "pep.py bancho server v{}\n".format(glob.VERSION)
+	msg = "pep.py Vipsu server v{}\n".format(glob.VERSION)
 	msg += "LETS scores server v{}\n".format(letsVersion)
 	msg += "made by the Ripple team\n"
-	msg += "modified by the Atoka Team\n"
+	msg += "modified by the Vipsu Team\n"
 	msg += "\n"
 	msg += "=== BANCHO STATS ===\n"
 	msg += "Connected users: {}\n".format(data["connectedUsers"])
@@ -413,7 +429,7 @@ def getPPMessage(userID, just_data = False):
 		currentAcc = token.tillerino[2]
 
 		# Send request to LETS api
-		resp = requests.get("http://127.0.0.1:5002/api/v1/pp?b={}&m={}".format(currentMap, currentMods), timeout=10).text
+		resp = requests.get("http://127.0.0.1:5002/letsapi/v1/pp?b={}&m={}".format(currentMap, currentMods), timeout=60).text
 		data = json.loads(resp)
 
 		# Make sure status is in response data
@@ -439,16 +455,16 @@ def getPPMessage(userID, just_data = False):
 			msg += "95%: {pp95}pp | 98%: {pp98}pp | 99% {pp99}pp | 100%: {pp100}pp".format(pp100=data["pp"][0], pp99=data["pp"][1], pp98=data["pp"][2], pp95=data["pp"][3])
 		else:
 			msg += "{acc:.2f}%: {pp}pp".format(acc=token.tillerino[2], pp=data["pp"][0])
-		
+
 		originalAR = data["ar"]
 		# calc new AR if HR/EZ is on
 		if (currentMods & mods.EASY) > 0:
 			data["ar"] = max(0, data["ar"] / 2)
 		if (currentMods & mods.HARDROCK) > 0:
 			data["ar"] = min(10, data["ar"] * 1.4)
-		
+
 		arstr = " ({})".format(originalAR) if originalAR != data["ar"] else ""
-		
+
 		# Beatmap info
 		msg += " | {bpm} BPM | AR {ar}{arstr} | {stars:.2f} stars".format(bpm=data["bpm"], stars=data["stars"], ar=data["ar"], arstr=arstr)
 
@@ -460,10 +476,12 @@ def getPPMessage(userID, just_data = False):
 	except exceptions.apiException:
 		# API error
 		return "Unknown error in LETS API call."
-	#except:
+	"""
+	except:
 		# Unknown exception
 		# TODO: print exception
-	#	return False
+		return False
+	"""
 
 def tillerinoNp(fro, chan, message):
 	try:
@@ -473,7 +491,7 @@ def tillerinoNp(fro, chan, message):
 			spectatorHostToken = glob.tokens.getTokenFromUserID(spectatorHostUserID, ignoreIRC=True)
 			if spectatorHostToken is None:
 				return False
-			return bloodcatMessage(spectatorHostToken.beatmapID)
+			return bloodcatMessage(fro, spectatorHostToken.beatmapID)
 
 		# Run the command in PM only
 		if chan.startswith("#"):
@@ -498,7 +516,8 @@ def tillerinoNp(fro, chan, message):
 			"+DoubleTime": mods.DOUBLETIME,
 			"-HalfTime": mods.HALFTIME,
 			"+Flashlight": mods.FLASHLIGHT,
-			"-SpunOut": mods.SPUNOUT
+			"-SpunOut": mods.SPUNOUT,
+			"~Relax~": mods.RELAX
 		}
 
 		if playWatch:
@@ -520,6 +539,42 @@ def tillerinoNp(fro, chan, message):
 		return getPPMessage(userID)
 	except:
 		return False
+		
+def getTillerinoRecommendation(fro, chan, message):
+	try:
+		# Run the command in PM only
+		if chan.startswith("#"):
+			return False
+
+		token = glob.tokens.getTokenFromUsername(fro)
+		userID = token.userID
+		
+		l = glob.db.fetch("SELECT * from tillerino_maplists WHERE user = {}".format(str(userID)))
+		i = glob.db.fetch("SELECT * from tillerino_offsets WHERE user = {}".format(str(userID)))
+		if i is not None:
+			i = i['offset']
+			maplist = l['maplist'].split(',')
+			if(i >= len(maplist)):
+				return "I have nothing to recommend you"
+			data = None 
+			while (data is None):
+				map = maplist[i]
+				i += 1
+				data = glob.db.fetch("SELECT beatmaps.beatmap_id as bid, beatmaps.song_name as sn from beatmaps WHERE beatmap_md5 = \'{}\'".format(map))
+					
+			modsEnum = 0
+			if token is not None:
+				token.tillerino = [int(data["bid"]), 0 , -1.0]
+
+			glob.db.execute("UPDATE tillerino_offsets  SET offset = {} WHERE user = {}".format(str(i),str(userID)))
+
+
+
+	        # Return tillerino message
+			return getPPMessage(userID)
+	except Exception as a:
+		log.error("Unknown error in {}!\n```{}\n{}```".format("fokabotCommands", sys.exc_info(), traceback.format_exc()))
+		return False		
 
 
 def tillerinoMods(fro, chan, message):
@@ -542,8 +597,8 @@ def tillerinoMods(fro, chan, message):
 		modsList = [message[0][i:i+2].upper() for i in range(0, len(message[0]), 2)]
 		modsEnum = 0
 		for i in modsList:
-			if i not in ["NO", "NF", "EZ", "HD", "HR", "DT", "HT", "NC", "FL", "SO"]:
-				return "Invalid mods. Allowed mods: NO, NF, EZ, HD, HR, DT, HT, NC, FL, SO. Do not use spaces for multiple mods."
+			if i not in ["NO", "NF", "EZ", "HD", "HR", "DT", "HT", "NC", "FL", "SO", "RX"]:
+				return "Invalid mods. Allowed mods: NO, NF, EZ, HD, HR, DT, HT, NC, FL, SO, RX. Do not use spaces for multiple mods."
 			if i == "NO":
 				modsEnum = 0
 				break
@@ -565,6 +620,12 @@ def tillerinoMods(fro, chan, message):
 				modsEnum += mods.FLASHLIGHT
 			elif i == "SO":
 				modsEnum += mods.SPUNOUT
+			elif i == "RX":
+				modsEnum += mods.RELAX
+			""" Disabled since we uhhhhhhhhhhh fuck ap
+			elif i == "AP":
+				modsEnum += mods.RELAX2
+			"""
 
 		# Set mods
 		token.tillerino[1] = modsEnum
@@ -588,7 +649,7 @@ def tillerinoAcc(fro, chan, message):
 
 		# Make sure the user has triggered the bot with /np command
 		if token.tillerino[0] == 0:
-			return "What are you stupid. Please give me a beatmap first with /np command."
+			return "Please give me a beatmap first with /np command."
 
 		# Convert acc to float
 		acc = float(message[0])
@@ -602,6 +663,362 @@ def tillerinoAcc(fro, chan, message):
 		return "Invalid accuracy value. God dammit learn to type."
 	except:
 		return False
+		
+#Hoshio Thing
+
+def getBeatmapRequest(fro, chan, message): # Grab a random beatmap request. TODO: Add gamemode handling to this and !request
+	
+	request = glob.db.fetch("SELECT * FROM rank_requests LIMIT 1;")
+	if request is not None:
+		username = userUtils.getUsername(request['userid'])
+		mapData = glob.db.fetch("SELECT song_name, ranked FROM beatmaps WHERE beatmap_id = {} ORDER BY difficulty_std DESC LIMIT 1;".format(request['bid']))
+		glob.db.execute("DELETE FROM rank_requests WHERE id = {};".format(request['id']))
+		return "[https://revipsu.cf/u/{userID} {username}] nominated beatmap: [https://osu.ppy.sh/b/{beatmapID} {songName}] for status change. {VipsuBeatmapLink}The request has been deleted, so please decide it's status.".format(userID=request['userid'], username=username, beatmapID=request['bid'], songName=mapData['song_name'], VipsuBeatmapLink='[https://revipsu.cf/b/{} Vipsu beatmap Link]. '.format(request['bid']))
+	else:
+		return "All nominations have been checked. Thank you for your hard work! :)"
+	
+	return "The beatmap ranking system has been reworked."
+
+def getPlaytime(fro, chan, message):
+	userID = userUtils.getID(fro)
+
+	playtime = userUtils.getPlaytimeTotal(userID)
+	delta = timedelta(seconds=int(playtime))
+
+	d = datetime(1,1,1) + delta
+
+	return '{}: Your total osu!Vipsu playtime (all gamemodes) is: {} days, {} hours, {} minutes, {} seconds.'.format(fro, d.day-1, d.hour, d.minute, d.second)
+
+def toggleNotifications(fro, chan, message):
+	userID = userUtils.getID(fro)
+
+	status = userUtils.toggleAkatsukiNotifications(userID)
+
+	if status == 1:
+		return "You should no longer see notifications of switching between regular and relax."
+	elif status == 0:
+		return "You should now see notifications of switching between regular and relax."
+	else:
+		return "Something went wrong while trying to toggle your notifications.. This should never happen, so please contact Impairaiton directly."
+
+def whitelistUserPPLimit(fro, chan, message):
+	messages = [m.lower() for m in message]
+	target = message[0]
+	relax = message[1]
+
+	userID = userUtils.getID(target)
+
+	if userID == 0:
+		return "That user does not exist."
+
+	if 'x' in relax:
+		rx = True
+	else:
+		rx = False
+
+	userUtils.whitelistUserPPLimit(userID, rx)
+	return "{user} has been whitelisted from autorestrictions on {rx}.".format(user=target, rx='relax' if rx else 'vanilla')
+
+
+def fokabotRanking(fro, chan, message):	
+
+	# Put the gathered values into variables to be used later
+	messages = [m.lower() for m in message]  #!map rank set 3298432874
+	rankType = message[0]
+	mapType = message[1]
+
+	# Get persons userID, privileges, and token
+	userID = userUtils.getID(fro)
+	privileges = userUtils.getPrivileges(userID)
+	token = glob.tokens.getTokenFromUserID(userID)
+	name = userUtils.getUsername(userID)
+
+	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
+	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
+		return "Map ranking is not permitted in regular channels, please do so in PMs with FokaBot (or #admin if administrator)."
+
+	if token.tillerino[0] == 0:
+		return "Please give me a beatmap first with /np command."
+
+	mapID = token.tillerino[0]
+
+	# Grab beatmapData from db
+	try:
+		beatmapData = glob.db.fetch("SELECT beatmapset_id, song_name, ranked FROM beatmaps WHERE beatmap_id = {} LIMIT 1".format(mapID))
+	except:
+		return "We could not find that beatmap. Perhaps check you are using the BeatmapID (not BeatmapSetID), and typed it correctly."
+				
+	# User is QAT
+	if privileges & 256:
+
+		# Figure out which ranked status we're requesting to
+		if 'r' in rankType.lower() and 'u' not in rankType.lower():
+			rankType = 'rank'
+			rankTypeID = 2
+			freezeStatus = 1
+		elif 'l' in rankType.lower():
+			rankType = 'love'
+			rankTypeID = 5
+			freezeStatus = 1
+		elif 'u' in rankType.lower() or 'g' in rankType.lower():
+			rankType = 'unrank'
+			rankTypeID = 0
+			freezeStatus = 0
+		else:
+			return "Please enter a valid ranked status (rank, love, unrank)."
+
+		if beatmapData['ranked'] == rankTypeID:
+			return "This map is already {}ed".format(rankType)
+
+		if mapType == 'set':
+			numDiffs = glob.db.fetch("SELECT COUNT(id) FROM beatmaps WHERE beatmapset_id = {}".format(beatmapData["beatmapset_id"]))
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmapset_id = {} LIMIT {}".format(rankTypeID, freezeStatus, userID, beatmapData["beatmapset_id"], numDiffs["COUNT(id)"]))
+		else:
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmap_id = {} LIMIT 1".format(rankTypeID, freezeStatus, userID, mapID ))
+
+		# Announce / Log to AP logs when ranked status is changed
+		log.rap(userID, "has {}ed beatmap ({}): {} ({}).".format(rankType, mapType, beatmapData["song_name"], mapID), True)
+		if mapType.lower() == 'set':
+			msg = "{} has {}ed beatmap set: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, beatmapData["beatmapset_id"], beatmapData["song_name"])
+		else:
+			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, mapID, beatmapData["song_name"])
+
+		chat.sendMessage(glob.BOT_NAME, "#announce", msg)
+		if rankType == "love":
+			if mapType == "set":
+				webhookDescription = "{} (set) has been loved by {}".format(beatmapData["song_name"], name)
+			else:
+				webhookDescription = "{} has been loved by {}".format(beatmapData["song_name"], name)
+		else:
+			if mapType == "set":
+				webhookDescription = "{} (set) has been {}ed by {}".format(beatmapData["song_name"], rankType, name)
+			else:
+				webhookDescription = "{} has been {}ed by {}".format(beatmapData["song_name"], rankType, name)
+
+		webhookHelper.postWebhookRanked(glob.conf.config["webhooks"]["ranked"], args={
+			"color": 0xf0ad4e,
+			"title": "New Ranked Map!",
+			"title_url": "https://osu.ppy.sh/s/" + str(beatmapData["beatmapset_id"]),
+			"desc": webhookDescription,
+			"image": "https://assets.ppy.sh/beatmaps/" + str(beatmapData["beatmapset_id"]) + "/covers/cover.jpg",
+			"author": name,
+			"author_icon": "http://a.revipsu.cf/" + str(userID),
+			"author_url": "http://revipsu.cf/u/" + str(userID),
+		})
+		return msg
+
+def fokabotlove(fro, chan, message):	
+
+	# Put the gathered values into variables to be used later
+	messages = [m.lower() for m in message]  #!map rank set 3298432874
+	mapType = message[0]
+
+	# Get persons userID, privileges, and token
+	userID = userUtils.getID(fro)
+	privileges = userUtils.getPrivileges(userID)
+	token = glob.tokens.getTokenFromUserID(userID)
+	name = userUtils.getUsername(userID)
+
+	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
+	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
+		return "Map ranking is not permitted in regular channels, please do so in PMs with FokaBot (or #admin if administrator)."
+
+	if token.tillerino[0] == 0:
+		return "Please give me a beatmap first with /np command."
+
+	mapID = token.tillerino[0]
+
+	# Grab beatmapData from db
+	try:
+		beatmapData = glob.db.fetch("SELECT beatmapset_id, song_name, ranked FROM beatmaps WHERE beatmap_id = {} LIMIT 1".format(mapID))
+	except:
+		return "We could not find that beatmap. Perhaps check you are using the BeatmapID (not BeatmapSetID), and typed it correctly."
+				
+	# User is QAT
+	if privileges & 256:
+
+		rankType = 'love'
+		rankTypeID = 5
+		blacklist = 0
+		freezeStatus = 2
+
+		if beatmapData['ranked'] == rankTypeID:
+			return "This map is already {}ed".format(rankType)
+
+		if mapType == 'set':
+			numDiffs = glob.db.fetch("SELECT COUNT(id) FROM beatmaps WHERE beatmapset_id = {}".format(beatmapData["beatmapset_id"]))
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, blacklisted = {} WHERE beatmapset_id = {} LIMIT {}".format(rankTypeID, freezeStatus, blacklist, beatmapData["beatmapset_id"], numDiffs["COUNT(id)"]))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(beatmapData["beatmapset_id"]))
+		else:
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmap_id = {} LIMIT 1".format(rankTypeID, freezeStatus, userID, mapID ))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(mapID))
+
+		# Announce / Log to AP logs when ranked status is changed
+		log.rap(userID, "has {}ed beatmap ({}): {} ({}).".format(rankType, mapType, beatmapData["song_name"], mapID), True)
+		if mapType.lower() == 'set':
+			msg = "{} has {}ed beatmap set: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, beatmapData["beatmapset_id"], beatmapData["song_name"])
+		else:
+			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, mapID, beatmapData["song_name"])
+
+		chat.sendMessage(glob.BOT_NAME, "#nowranked", msg)
+		if mapType == "set":
+			webhookDescription = "{} (set) has been loved by {}".format(beatmapData["song_name"], name)
+		else:
+			webhookDescription = "{} has been loved by {}".format(beatmapData["song_name"], name)
+		
+		webhookHelper.postWebhookLoved(glob.conf.config["webhooks"]["ranked"], args={
+			"color": 0xf0ad4e,
+			"title": "New Loved Map!",
+			"title_url": "https://osu.ppy.sh/s/" + str(beatmapData["beatmapset_id"]),
+			"desc": webhookDescription,
+			"image": "https://assets.ppy.sh/beatmaps/" + str(beatmapData["beatmapset_id"]) + "/covers/cover.jpg",
+			"author": name,
+			"author_icon": "http://a.revipsu.cf/" + str(userID),
+			"author_url": "http://revipsu.cf/u/" + str(userID),
+		})
+		return msg
+		
+def fokabotunrank(fro, chan, message):	
+
+	# Put the gathered values into variables to be used later
+	messages = [m.lower() for m in message]  #!map rank set 3298432874
+	mapType = message[0]
+
+	# Get persons userID, privileges, and token
+	userID = userUtils.getID(fro)
+	privileges = userUtils.getPrivileges(userID)
+	token = glob.tokens.getTokenFromUserID(userID)
+	name = userUtils.getUsername(userID)
+
+	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
+	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
+		return "Map ranking is not permitted in regular channels, please do so in PMs with FokaBot (or #admin if administrator)."
+
+	if token.tillerino[0] == 0:
+		return "Please give me a beatmap first with /np command."
+
+	mapID = token.tillerino[0]
+
+	# Grab beatmapData from db
+	try:
+		beatmapData = glob.db.fetch("SELECT beatmapset_id, song_name, ranked FROM beatmaps WHERE beatmap_id = {} LIMIT 1".format(mapID))
+	except:
+		return "We could not find that beatmap. Perhaps check you are using the BeatmapID (not BeatmapSetID), and typed it correctly."
+				
+	# User is QAT
+	if privileges & 256:
+
+		rankType = 'unrank'
+		rankTypeID = 0
+		blacklist = 1
+		freezeStatus = 0
+
+		if beatmapData['ranked'] == rankTypeID:
+			return "This map is already {}ed".format(rankType)
+
+		if mapType == 'set':
+			numDiffs = glob.db.fetch("SELECT COUNT(id) FROM beatmaps WHERE beatmapset_id = {}".format(beatmapData["beatmapset_id"]))
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, blacklisted = {} WHERE beatmapset_id = {} LIMIT {}".format(rankTypeID, freezeStatus, blacklist, beatmapData["beatmapset_id"], numDiffs["COUNT(id)"]))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(beatmapData["beatmapset_id"]))
+		else:
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, blacklisted = {} WHERE beatmap_id = {} LIMIT 1".format(rankTypeID, freezeStatus, blacklist, mapID))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(mapID))
+	
+		# Announce / Log to AP logs when ranked status is changed
+		log.rap(userID, "has {}ed beatmap ({}): {} ({}).".format(rankType, mapType, beatmapData["song_name"], mapID), True)
+		if mapType.lower() == 'set':
+			msg = "{} has {}ed beatmap set: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, beatmapData["beatmapset_id"], beatmapData["song_name"])
+		else:
+			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, mapID, beatmapData["song_name"])
+
+		chat.sendMessage(glob.BOT_NAME, "#nowranked", msg)
+		if mapType == "set":
+			webhookDescription = "{} (set) has been unranked by {}".format(beatmapData["song_name"], name)
+		else:
+			webhookDescription = "{} has been uranked by {}".format(beatmapData["song_name"], name)
+		
+		webhookHelper.postWebhookUnranked(glob.conf.config["webhooks"]["ranked"], args={
+			"color": 0xf0ad4e,
+			"title": "New unranked Map!",
+			"title_url": "https://osu.ppy.sh/s/" + str(beatmapData["beatmapset_id"]),
+			"desc": webhookDescription,
+			"image": "https://assets.ppy.sh/beatmaps/" + str(beatmapData["beatmapset_id"]) + "/covers/cover.jpg",
+			"author": name,
+			"author_icon": "http://a.revipsu.cf/" + str(userID),
+			"author_url": "http://revipsu.cf/u/" + str(userID),
+		})
+		return msg		
+		
+def fokabotrank(fro, chan, message):	
+
+	# Put the gathered values into variables to be used later
+	messages = [m.lower() for m in message]  #!map rank set 3298432874
+	mapType = message[0]
+
+	# Get persons userID, privileges, and token
+	userID = userUtils.getID(fro)
+	privileges = userUtils.getPrivileges(userID)
+	token = glob.tokens.getTokenFromUserID(userID)
+	name = userUtils.getUsername(userID)
+
+	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
+	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
+		return "Map ranking is not permitted in regular channels, please do so in PMs with FokaBot (or #admin if administrator)."
+
+	if token.tillerino[0] == 0:
+		return "Please give me a beatmap first with /np command."
+
+	mapID = token.tillerino[0]
+
+	# Grab beatmapData from db
+	try:
+		beatmapData = glob.db.fetch("SELECT beatmapset_id, song_name, ranked FROM beatmaps WHERE beatmap_id = {} LIMIT 1".format(mapID))
+	except:
+		return "We could not find that beatmap. Perhaps check you are using the BeatmapID (not BeatmapSetID), and typed it correctly."
+				
+	# User is QAT
+	if privileges & 256:
+
+		rankType = 'rank'
+		blacklist = 0
+		rankTypeID = 2
+		freezeStatus = 1
+
+		if beatmapData['ranked'] == rankTypeID:
+			return "This map is already {}ed".format(rankType)
+
+		if mapType == 'set':
+			numDiffs = glob.db.fetch("SELECT COUNT(id) FROM beatmaps WHERE beatmapset_id = {}".format(beatmapData["beatmapset_id"]))
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmapset_id = {} LIMIT {}".format(rankTypeID, freezeStatus, userID, beatmapData["beatmapset_id"], numDiffs["COUNT(id)"]))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(beatmapData["beatmapset_id"]))
+		else:
+			glob.db.execute("UPDATE beatmaps SET ranked = {}, ranked_status_freezed = {}, rankedby = {} WHERE beatmap_id = {} LIMIT 1".format(rankTypeID, freezeStatus, userID, mapID ))
+			glob.db.execute("DELETE FROM rank_requests WHERE bid = {}".format(mapID))
+
+		# Announce / Log to AP logs when ranked status is changed
+		log.rap(userID, "has {}ed beatmap ({}): {} ({}).".format(rankType, mapType, beatmapData["song_name"], mapID), True)
+		if mapType.lower() == 'set':
+			msg = "{} has {}ed beatmap set: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, beatmapData["beatmapset_id"], beatmapData["song_name"])
+		else:
+			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}]".format(fro, rankType, mapID, beatmapData["song_name"])
+
+		chat.sendMessage(glob.BOT_NAME, "#nowranked", msg)
+		if mapType == "set":
+			webhookDescription = "{} (set) has been ranked by {}".format(beatmapData["song_name"], name)
+		else:
+			webhookDescription = "{} has been ranked by {}".format(beatmapData["song_name"], name)
+		
+		webhookHelper.postWebhookRanked(glob.conf.config["webhooks"]["ranked"], args={
+			"color": 0xf0ad4e,
+			"title": "New Ranked Map!",
+			"title_url": "https://osu.ppy.sh/s/" + str(beatmapData["beatmapset_id"]),
+			"desc": webhookDescription,
+			"image": "https://assets.ppy.sh/beatmaps/" + str(beatmapData["beatmapset_id"]) + "/covers/cover.jpg",
+			"author": name,
+			"author_icon": "http://a.revipsu.cf/" + str(userID),
+			"author_url": "http://revipsu.cf/u/" + str(userID),
+		})
+		return msg		
 
 def tillerinoLast(fro, chan, message):
 	try:
@@ -803,7 +1220,7 @@ def linkDiscord(fro, chan, message):
 	elif privileges & 4:
 		roleID = 367104098966831114
 	else:
-		return "Sorry but it does not seem like you've donated to Atoka. If this is incorrect, please contact Night."
+		return "Sorry but it does not seem like you've donated to Vipsu. If this is incorrect, please contact Night."
 
 	previousAkatsuki = glob.db.fetch("SELECT verified FROM discord_roles WHERE userid = {}".format(userID))
 	previousDiscord = glob.db.fetch("SELECT verified FROM discord_roles WHERE discordid = {}".format(int(discordID)))
@@ -814,7 +1231,7 @@ def linkDiscord(fro, chan, message):
 
 	if previousDiscord:
 		if previousDiscord['verified'] == 1:
-			return "This discord account is already linked (and verified) to another Atoka account."
+			return "This discord account is already linked (and verified) to another Vipsu account."
 
 	glob.db.execute("INSERT INTO discord_roles (userid, discordid, roleid, verified) VALUES ('{}', '{}', '{}', 0)".format(userID, int(discordID), roleID))
 
@@ -885,7 +1302,7 @@ def enqueueRestriction(fro, chan, message):
 def instantRestart(fro, chan, message):
 	msg = ' '.join(message[:])
 	if len(msg) < 2:
-		msg = "Bancho is restarting, it will be back online momentarily.."
+		msg = "Vipsu is restarting, it will be back online momentarily.."
 	glob.streams.broadcast("main", serverPackets.notification(msg))
 	systemHelper.scheduleShutdown(0, True, delay=5)
 	return False
@@ -902,12 +1319,9 @@ def changeUsernameSelf(fro, chan, message): # For Donators to change their own u
 	tokens = glob.tokens.getTokenFromUsername(userUtils.safeUsername(fro), safe=True, _all=True) # all tokens
 	token = glob.tokens.getTokenFromUsername(userUtils.safeUsername(fro), safe=True) # single token
 
-	if not privileges & 7:
-		token.enqueue(serverPackets.notification("Ingame username changing is an Atoka Donor perk."))
-		return False
-	if newUsername == 'Phil' and userID != 1001:
+	if newUsername == 'Impairation' and userID != 1000:
 		return "Nope."
-	if newUsername == 'Night' and UserID != 1002:
+	if newUsername == 'yes' and UserID != 1002:
 		return "Nope."
 
 	# Get safe username
@@ -993,8 +1407,8 @@ def nightSwitch(fro, chan, message): # Allow night to switch between perm settin
 		r += "AdminCaker (4194304); "
 	r += "."
 
-	if userID == 1002:
-		glob.db.execute("UPDATE users SET privileges = {} WHERE id = 1002;".format(newPrivileges))
+	if userID == 1000:
+		glob.db.execute("UPDATE users SET privileges = {} WHERE id = 1000;".format(newPrivileges))
 	else:
 		return "No. and how did you get this far?"
 
@@ -1008,14 +1422,14 @@ def changeUsername(fro, chan, message): # Change a users username, ingame.
 	userID = userUtils.getIDSafe(fro)
 	privileges = userUtils.getPrivileges(targetUserID) # grab this to make admins not able to change non-donor's usernames. nazi mode.
 
-	if targetUserID == 1002 and userID != 1001:
+	if targetUserID == 1000 and userID != 1000:
 		return "Nope."
 
-	if targetUserID == 1001 and userID != 1001:
+	if targetUserID == 1002 and userID != 1002:
 		return "Nope."
 
 #	if not privileges & 8388608: # Stops username changes to non-donor's. nazi mode.
-#		return "The target user is not an Atoka Donor."
+#		return "The target user is not an Vipsu Donor."
 
 	# Get safe username
 	newUsernameSafe = userUtils.safeUsername(newUsername)
@@ -1040,7 +1454,7 @@ def changeUsername(fro, chan, message): # Change a users username, ingame.
 		i.kick()
 
 	log.rap(targetUserID, "has changed {}'s username to {}.".format(fro, newUsername))
-	return "Name successfully changed. It might take a while to change the username if the user is online on Bancho."
+	return "Name successfully changed. It might take a while to change the username if the user is online on Vipsu."
 
 def requestMap(fro, chan, message): # Splitting these up due to bancho explosions
 
@@ -1054,7 +1468,7 @@ def requestMap(fro, chan, message): # Splitting these up due to bancho explosion
 	privileges = userUtils.getPrivileges(userID)
 
 	if chan.startswith('#') and chan != '#request' and not privileges & 8388608: # only run in pms or #request, unless premium
-		return "Map requests are not permitted in regular channels, please do so in #request, or a PM to Mirai."
+		return "Map requests are not permitted in regular channels, please do so in #request, or a PM to Fokabot."
 
 
 	# Grab beatmapData from db
@@ -1069,15 +1483,22 @@ def requestMap(fro, chan, message): # Splitting these up due to bancho explosion
 
 	if 's' in mapType:
 		mapType = 's'
-	elif 'd' in mapType or 'm' in mapType:
-		mapType = 'm'
+	elif 'd' in mapType or 'm' in mapType or 'b' in mapType:
+		mapType = 'b'
 	else:
 		return "Please specify whether your request is a single difficulty, or a full set (map/set). Example: '!map unrank/rank/love set/map 256123 mania'."
 
 	if beatmapData['ranked'] > 0: # Check if the requested map is already loved/ranked
 		return "That map is already {}.".format("ranked" if beatmapData['ranked'] == 2 else "loved")
 
+	if mapType == "set":
+		webhookDescription = "{} (set) has been requested. ".format(beatmapData["beatmapset_id"])
+	else:
+		webhookDescription = "{} has been requested. ".format(beatmapData["beatmapset_id"])
+
+
 	glob.db.execute("INSERT INTO rank_requests (userid, bid, type, time, blacklisted) VALUES ('{}', '{}', '{}', '{}', '0')".format(userID, mapID, mapType, int(time.time())))
+	userUtils.submitBeatmapRequest(fro, mapID, mapType)
 	return "Your beatmap request has been submitted. Thank you!"
 
 def editMap(fro, chan, message): # miniature version of old editMap. Will most likely need to be worked on quite a bit.
@@ -1093,16 +1514,11 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 	userID = userUtils.getID(fro)
 	privileges = userUtils.getPrivileges(userID)
 	token = glob.tokens.getTokenFromUserID(userID)
+	name = userUtils.getUsername(userID)
 
 	# Only allow users to request maps in #admin channel or PMs with Mirai. Heavily reduced spam!
 	if chan.startswith('#') and chan != '#admin' and not privileges & 8388608:
 		return "Map ranking is not permitted in regular channels, please do so in PMs with Mirai (or #admin if administrator)."
-
-	# Silence the target for a brief moment. This is needed because threading issues dddddddd
-	if token is not None:
-		token.silence(10, "Map Request: Auto silence")
-	else:
-		return "Somehow the server could not grab your token. Please report this directly to Night."
 
 	# Grab beatmapData from db
 	try:
@@ -1140,7 +1556,7 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 		elif 'l' in rankType.lower():
 			rankType = 'love'
 			rankTypeID = 5
-			freezeStatus = 1
+			freezeStatus = 2
 		elif 'u' in rankType.lower() or 'g' in rankType.lower():
 			rankType = 'unrank'
 			rankTypeID = 0
@@ -1166,9 +1582,28 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 			msg = "{} has {}ed beatmap: [https://osu.ppy.sh/s/{} {}] on gamemode {}".format(fro, rankType, mapID, beatmapData["song_name"], gameMode)
 
 		chat.sendMessage(glob.BOT_NAME, "#announce", msg)
-	else:
-		msg = "The request command has been changed to !request. Please use that instead, the format is '!request set/map 256123'"
-	return msg
+		if rankType == "love":
+			if mapType == "set":
+				webhookDescription = "{} (set) has been loved by {}".format(beatmapData["song_name"], name)
+			else:
+				webhookDescription = "{} has been loved by {}".format(beatmapData["song_name"], name)
+		else:
+			if mapType == "set":
+				webhookDescription = "{} (set) has been {}ed by {}".format(beatmapData["song_name"], rankType, name)
+			else:
+				webhookDescription = "{} has been {}ed by {}".format(beatmapData["song_name"], rankType, name)
+
+		webhookHelper.postWebhookRanked(glob.conf.config["webhooks"]["ranked"], args={
+			"color": 0xf0ad4e,
+			"title": "New Ranked Map!",
+			"title_url": "https://osu.ppy.sh/s/" + str(beatmapData["beatmapset_id"]),
+			"desc": webhookDescription,
+			"image": "https://assets.ppy.sh/beatmaps/" + str(beatmapData["beatmapset_id"]) + "/covers/cover.jpg",
+			"author": name,
+			"author_icon": "http://a.revipsu.cf/" + str(userID),
+			"author_url": "http://revipsu.cf/u/" + str(userID),
+		})
+		return msg
 
 #def cleanVivid(fro, chan, message): # Clear vivids leaderboards 4head
 #	userID = userUtils.getID(fro)
@@ -1185,9 +1620,21 @@ def editMap(fro, chan, message): # miniature version of old editMap. Will most l
 def postAnnouncement(fro, chan, message): # Post to #announce ingame
 	announcement = ' '.join(message[0:])
 	chat.sendMessage(glob.BOT_NAME, "#announce", announcement)
+	userID = userUtils.getID(fro)
+	name = userUtils.getUsername(userID)	
+	
+	webhookHelper.postWebhook(glob.conf.config["webhooks"]["announcement"], args={
+		"color": 0xf0ad4e,
+		"title": "Announcement",
+		"desc": announcement,
+		"author": name,
+		"author_icon": "http://a.revipsu.cf/" + str(userID),
+		"author_url": "http://revipsu.cf/u/" + str(userID),
+	})
+	
 	return "Announcement successfully sent."
 
-""" Unused - cmyui
+
 def discordTest(fro, chan, message):
 	try:
 		log.cmyui("Success {} {} {}".format(fro, chan, message), discord="cm")
@@ -1195,6 +1642,7 @@ def discordTest(fro, chan, message):
 	except:
 		return "not success. :("
 	return False
+	
 def discordUserInfo(fro, chan, message): # ahahaha - cmyui
 	target = message[0].lower()
 	# Make sure the user exists
@@ -1208,6 +1656,7 @@ def discordUserInfo(fro, chan, message): # ahahaha - cmyui
 	# Perform the request :)
 	userUtils.collectUserInfo(targetUserID)
 	return "Request successfully performed (uID: {}).".format(targetUserID)
+	
 def runSQL(fro, chan, message): # Obviously not the safest command.. Run SQL queries ingame!
 	messages = [m.lower() for m in message]
 	command = ' '.join(message[0:])
@@ -1222,6 +1671,7 @@ def runSQL(fro, chan, message): # Obviously not the safest command.. Run SQL que
 	else:
 		return "You lack sufficient permissions to execute this query"
 	return "Query executed successfully"
+	
 def promoteUser(fro, chan, message): # Set a users privileges ingame
 	messages = [m.lower() for m in message]
 	target = message[0]
@@ -1255,15 +1705,17 @@ def promoteUser(fro, chan, message): # Set a users privileges ingame
 	msg = "{}'s rank has been set to: {}".format(target, privilege)
 	chat.sendMessage(glob.BOT_NAME, "#announce", msg)
 	return msg
-def recommendMap(fro, chan, message): # too lazy to finish this - 2018-12-08
+	
+def recommendMap(fro, chan, message):
 	messages = [m.lower() for m in message]
-	diffmode = message[0]
-	userID = userUtils.getIDSafe(fro)
 	try:
+		diffmode = message[0]
 		if chan.startswith("#"):
 			return False
 		# Probably the hardest thing I've ever attempted to code (made by cmyui winky face emoji :cowboy:)
 		# Currently only works on nomod because idk how to code
+		userID = userUtils.getIDSafe(fro)
+
 		# Specify gamemode. recommend PP to the User
 		if not diffmode.isdigit():
 			if diffmode == "std":
@@ -1280,33 +1732,35 @@ def recommendMap(fro, chan, message): # too lazy to finish this - 2018-12-08
 				modeID = 3
 			else:
 				return "Please enter a valid gamemode."
+
 			# Calculate what sort of PP amounts we should be recommending based on the average of their top 10 plays
 			userPPData = glob.db.fetch("SELECT AVG(pp) FROM (SELECT pp FROM scores WHERE userid = {} AND play_mode = {} ORDER BY pp DESC LIMIT 10) AS topplays".format(userID, modeID))
+
+			'''
+			if not pp in userPPData:
+				return "You do not have enough scores in this gamemode to have any recommendations."
+			'''
+
 			#Determine what amount of PP we should recommend them
 			rawrecommendedPP = userPPData.values()
 			recommendedPP = 0
 			for val in rawrecommendedPP:
 				recommendedPP += val
+
 			# Determine the amount of variance
 			ppVariance = recommendedPP / 15
 			ppBelow = recommendedPP - ppVariance
 			ppAbove = recommendedPP + ppVariance
-			# pp100=data["pp"][0], pp99=data["pp"][1], pp98=data["pp"][2], pp95=data["pp"][3]
+
 			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND ((pp_95 > {} AND pp_95 < {}) OR (pp_98 > {} AND pp_98 < {}) OR (pp_99 > {} AND pp_99 < {}) OR (pp_100 > {} AND pp_100 < {})) AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, modeID))
-					# Send request to LETS api
-			resp = requests.get("http://127.0.0.1:5002/letsapi/v1/pp?b={}".format(recommendedMaps["beatmap_id"]), timeout=10).text
-			data = json.loads(resp)
-			# Make sure status is in response data
-			if "status" not in data:
-				raise exceptions.apiException
-			# Make sure status is 200
-			if data["status"] != 200:
-				if "message" in data:
-					return "Error in LETS API call ({}).".format(data["message"])
-				else:
-					raise exceptions.apiException
-			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | Current recommendations: {}pp | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedPP, recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
+			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | Current recommendations: {} - {}pp | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], ppBelow, ppAbove, recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
+
+
 		else: # Do not specify gamemode. Do not recommend PP as they are picking a star rating
+			
+			if int(diffmode) > 10:
+				return "Maps over 10* will not be calculated."
+			
 			findMode = glob.db.fetch("SELECT favourite_mode FROM users_stats where id = {}".format(userID))
 			if findMode["favourite_mode"] == 0:
 				modeName = "std"
@@ -1320,12 +1774,88 @@ def recommendMap(fro, chan, message): # too lazy to finish this - 2018-12-08
 			elif findMode["favourite_mode"] == 3:
 				modeName = "mania"
 				modeID = 3
+
 			diffmodeplus = int(diffmode) + 1
 			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND difficulty_{} > {} AND difficulty_{} < {} AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, modeName, diffmode, modeName, diffmodeplus, modeID))
-			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
+			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])		
 	except:
-		return "Please use the correct syntax: !r <mode or * rating (will predict your main mode)>."
-	"""
+			return "it's broken good job."
+			
+def rxrecommendMap(fro, chan, message):
+	messages = [m.lower() for m in message]
+	try:
+		diffmode = message[0]
+		if chan.startswith("#"):
+			return False
+		# Probably the hardest thing I've ever attempted to code (made by cmyui winky face emoji :cowboy:)
+		# Currently only works on nomod because idk how to code
+		userID = userUtils.getIDSafe(fro)
+
+		# Specify gamemode. recommend PP to the User
+		if not diffmode.isdigit():
+			if diffmode == "std":
+				modeName = "std"
+				modeID = 0
+			elif diffmode == "taiko":
+				modeName = "taiko"
+				modeID = 1
+			elif diffmode == "ctb":
+				modeName = "ctb"
+				modeID = 2
+			elif diffmode == "mania":
+				modeName = "mania"
+				modeID = 3
+			else:
+				return "Please enter a valid gamemode."
+
+			# Calculate what sort of PP amounts we should be recommending based on the average of their top 10 plays
+			userPPData = glob.db.fetch("SELECT AVG(pp) FROM (SELECT pp FROM scores_relax WHERE userid = {} AND play_mode = {} ORDER BY pp DESC LIMIT 10) AS topplays".format(userID, modeID))
+
+			'''
+			if not pp in userPPData:
+				return "You do not have enough scores in this gamemode to have any recommendations."
+			'''
+
+			#Determine what amount of PP we should recommend them
+			rawrecommendedPP = userPPData.values()
+			recommendedPP = 0
+			for val in rawrecommendedPP:
+				recommendedPP += val
+
+			# Determine the amount of variance
+			ppVariance = recommendedPP / 15
+			ppBelow = recommendedPP - ppVariance
+			ppAbove = recommendedPP + ppVariance
+
+			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND ((pp_95 > {} AND pp_95 < {}) OR (pp_98 > {} AND pp_98 < {}) OR (pp_99 > {} AND pp_99 < {}) OR (pp_100 > {} AND pp_100 < {})) AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, ppBelow, ppAbove, modeID))
+			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | Current recommendations: {} - {}pp | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], ppBelow, ppAbove, recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])
+
+
+		else: # Do not specify gamemode. Do not recommend PP as they are picking a star rating
+			
+			if int(diffmode) > 10:
+				return "Maps over 10* will not be calculated."
+			
+			findMode = glob.db.fetch("SELECT favourite_mode FROM users_stats where id = {}".format(userID))
+			if findMode["favourite_mode"] == 0:
+				modeName = "std"
+				modeID = 0
+			elif findMode["favourite_mode"] == 1:
+				modeName = "taiko"
+				modeID = 1
+			elif findMode["favourite_mode"] == 2:
+				modeName = "ctb"
+				modeID = 2
+			elif findMode["favourite_mode"] == 3:
+				modeName = "mania"
+				modeID = 3
+
+			diffmodeplus = int(diffmode) + 1
+			recommendedMaps = glob.db.fetch("SELECT beatmap_id, song_name, ar, od, bpm, difficulty_{}, max_combo, pp_100, pp_99, pp_98, pp_95 FROM beatmaps WHERE ranked = 2 AND difficulty_{} > {} AND difficulty_{} < {} AND mode = {} ORDER BY RAND() LIMIT 1".format(modeName, modeName, diffmode, modeName, diffmodeplus, modeID))
+			return "{} | [https://osu.ppy.sh/b/{} {}]: OD{} | AR{} | {}BPM | {}* | Max Combo: {} | 95%: {}pp | 98%: {}pp | 99%: {}pp | 100%: {}pp. Good luck owo!".format(modeName, recommendedMaps["beatmap_id"], recommendedMaps["song_name"], recommendedMaps["od"], recommendedMaps["ar"], recommendedMaps["bpm"], recommendedMaps["difficulty_{}".format(modeName)], recommendedMaps["max_combo"], recommendedMaps["pp_95"], recommendedMaps["pp_98"], recommendedMaps["pp_99"], recommendedMaps["pp_100"])		
+	except:
+			return "it's broken good job."		
+			
 
 # Multiplayer Commands
 def getMatchIDFromChannel(chan):
@@ -1415,9 +1945,7 @@ def multiplayer(fro, chan, message):
 	def mpHost():
 		if len(message) < 2:
 			raise exceptions.invalidArgumentsException("Wrong syntax: !mp host <username>")
-		username = message[1].strip()
-		if not username:
-			raise exceptions.invalidArgumentsException("Please provide a username")
+		username = message[1]
 		userID = userUtils.getIDSafe(username)
 		if userID is None:
 			raise exceptions.userNotFoundException("No such user")
@@ -1490,7 +2018,7 @@ def multiplayer(fro, chan, message):
 			raise exceptions.userNotFoundException("No such user")
 		token = glob.tokens.getTokenFromUserID(userID, ignoreIRC=True)
 		if token is None:
-			raise exceptions.invalidUserException("That user is not connected to bancho right now.")
+			raise exceptions.invalidUserException("That user is not connected to Vipsu right now.")
 		_match = glob.matches.matches[getMatchIDFromChannel(chan)]
 		_match.invite(999, userID)
 		token.enqueue(serverPackets.notification("Please accept the invite you've just received from {} to "
@@ -1732,6 +2260,19 @@ def switchServer(fro, chan, message):
 	# userToken.kick()
 	return "{} has been connected to {}.".format(target, newServer)
 
+def delta(fro, chan, message):
+	if chan.startswith("#"):
+		return
+	if not glob.conf.config["server"]["deltaurl"].strip():
+		return "Delta is disabled."
+	userToken = glob.tokens.getTokenFromUserID(userUtils.getID(fro), ignoreIRC=True, _all=False)
+	if userToken is None:
+		return "You must be connected from a game client to switch to delta"
+	if not generalUtils.stringToBool(glob.conf.config["server"]["publicdelta"]) and not userToken.admin:
+		return "You can't use delta yet. Try again later."
+	userToken.enqueue(serverPackets.switchServer(glob.conf.config["server"]["deltaurl"]))
+	return "Connecting to delta..."
+
 # Send a Message across a player's screen and fail them if they are playing a map.
 def rtx(fro, chan, message):
 	target = message[0]
@@ -1743,8 +2284,21 @@ def rtx(fro, chan, message):
 		return "{}: user not found.".format(target)
 	userToken = glob.tokens.getTokenFromUserID(targetUserID, ignoreIRC=True, _all=False)
 	userToken.enqueue(serverPackets.rtx(message))
-	return "RIP {}. Welp, I guess we're gonna do it. 👌".format(target)
+	return "RIP {}. Welp, I guess we're gonna do it.".format(target)
 
+def competitionMap(fro, chan, message):
+	current_time = int(time.time())
+	result = glob.db.fetch("SELECT competitions.*, beatmaps.song_name FROM competitions LEFT JOIN beatmaps ON competitions.map = beatmaps.beatmap_id WHERE end_time > {}".format(current_time))
+
+	if result is None:
+		return "There are currently no active contests.. Check back at a later date!"
+
+	return "[Contest] [https://osu.ppy.sh/b/{beatmap_id} {song_name}] {leader} | Reward: {reward} | End date: {end_time} UTC.".format(beatmap_id=result['map'], song_name=result['song_name'], leader=' | Current leader: {}'.format(userUtils.getUsername(result['leader'])) if result['leader'] != 0 else '', reward=result['reward'], end_time=datetime.utcfromtimestamp(result['end_time']).strftime('%Y-%m-%d %H:%M:%S'))
+	
+def announceContest(fro, chan, message):
+	glob.streams.broadcast("main", serverPackets.notification('A new contest has begun on Vipsu!\nTo view details, please use the !contest command.\n\nBest of luck!'))
+	return False
+	
 # Returns a bloodcat link for the /np in #spectator
 def bloodcat(fro, chan, message):
 	try:
@@ -1766,6 +2320,48 @@ def bloodcat(fro, chan, message):
 			return "The spectator host is offline."
 		beatmapID = spectatorHostToken.beatmapID
 	return bloodcatMessage(beatmapID)
+	
+def trackUserOnline(fro, chan, message):
+	messages = [m.lower() for m in message]
+	target = message[0]
+
+	userID = userUtils.getID(target)
+
+	if userID == 0:
+		return "No user exists by that username."
+
+	userUtils.setUserTracked(userID, 1)
+	return "User tracked successfully."
+
+def untrackUserOnline(fro, chan, message):
+	messages = [m.lower() for m in message]
+	target = message[0]
+
+	userID = userUtils.getID(target)
+
+	if userID == 0:
+		return "No user exists by that username."
+
+	userUtils.setUserTracked(userID, 0)
+	return "User tracked successfully."	
+	
+def getMapNominator(fro, chan, message):
+	beatmapID = message[0]
+
+	result = userUtils.getMapNominator(beatmapID)
+
+	if result is None:
+		return "A map could not be found by that beatmap ID."
+
+	if result['ranked'] == 2:
+		rankedStatus = 'ranked'
+	elif result['ranked'] == 5:
+		rankedStatus = 'loved'
+	else:
+		rankedStatus = 'previously nominated'
+
+	return "The map was {} by: {}.".format(rankedStatus, userUtils.getUsername(result['rankedby']))
+	
 
 # Custom meme commands -Night
 def mokobe(fro, chan, message):
@@ -1807,16 +2403,32 @@ commands = [
 #		"privileges": privileges.ADMIN_CAKER,
 #		"callback": cleanVivid
 #	}, {
+		"trigger": "!bruh",
+		"callback": bruh
+	}, {
+		"trigger": "!restrictme",
+		"callback": restrictme
+	}, {
+		"trigger": "!oof",
+		"callback": oof
+	}, {
 		"trigger": "!d",
 		"callback": ping
-	}, {
+	}, {	
 		"trigger": "!report",
 		"callback": report
 	}, {
 		"trigger": "!help",
-		"response": "Click (here)[https://atoka.pw/doc/mirai] for Mirai's full command list"
+		"response": "Click (here)[http://revipsu.cf/doc/commands] for Fokabot's full command list"
 	}, {
-		"trigger": "!announce",
+		"trigger": "!contest",
+		"callback": competitionMap
+	}, {
+		"trigger": "!announcecontest",
+		"privileges": privileges.ADMIN_SEND_ALERTS,
+		"callback": announceContest
+	}, {			
+		"trigger": "!announce",	
 		"syntax": "<announcement>",
 		"privileges": privileges.ADMIN_SEND_ALERTS,
 		"callback": postAnnouncement
@@ -1829,6 +2441,21 @@ commands = [
 		"syntax": "<rank/love/unrank> <set/map> <ID> <gamemode>",
 		"callback": editMap
 	}, {
+		"trigger": "!love",
+		"syntax": "<set/map>",
+		"privileges": privileges.ADMIN_MANAGE_BEATMAPS,		
+		"callback": fokabotlove
+	}, {	
+		"trigger": "!rank",
+		"syntax": "<set/map>",
+		"privileges": privileges.ADMIN_MANAGE_BEATMAPS,		
+		"callback": fokabotrank
+	}, {	
+		"trigger": "!unrank",
+		"syntax": "<set/map>",
+		"privileges": privileges.ADMIN_MANAGE_BEATMAPS,		
+		"callback": fokabotunrank
+	}, {		
 		"trigger": "!request",
 		"syntax": "<set/map> <ID>",
 		"callback": requestMap
@@ -1954,7 +2581,6 @@ commands = [
 		"callback": updateBeatmap
 	}, {
 		"trigger": "!mp",
-		"privileges": privileges.USER_TOURNAMENT_STAFF,
 		"syntax": "<subcommand>",
 		"callback": multiplayer
 	}, {
@@ -1974,13 +2600,53 @@ commands = [
 		"callback": changeUsername
 	}, {
 		"trigger": "!c",
-		"privileges": privileges.USER_DONOR,
 		"syntax": "<newUsername>",
 		"callback": changeUsernameSelf
         }, {
 		"trigger": "!night",
 		"syntax": "<privileges>",
 		"callback": nightSwitch
+	}, {
+		"trigger": "!track",
+		"privileges": privileges.ADMIN_MANAGE_USERS,
+		"syntax": "<target>",
+		"callback": trackUserOnline
+	}, {
+		"trigger": "!untrack",
+		"privileges": privileges.ADMIN_MANAGE_USERS,
+		"syntax": "<target>",
+		"callback": untrackUserOnline		
+	}, {
+		"trigger": "!r",
+		"callback": recommendMap		
+	}, {
+		"trigger": "!rx",
+		"callback": rxrecommendMap		
+	}, {
+		"trigger": "!delta",
+		"callback": delta		
+	}, {		
+		"trigger": "!dt",
+		"callback": discordTest		
+	}, {	
+		"trigger": "!greq",
+		"privileges": privileges.ADMIN_MANAGE_BEATMAPS,
+		"callback": getBeatmapRequest
+	}, {
+		"trigger": "!playtime",
+		"callback": getPlaytime
+	}, {
+		"trigger": "!togglenotifs",
+		"callback": toggleNotifications
+	}, {
+		"trigger": "!whitelist",
+		"privileges": privileges.ADMIN_BAN_USERS,
+		"syntax": "<target> <relax/regular>",
+		"callback": whitelistUserPPLimit
+	}, {	
+		"trigger": "!whoranked",
+		"syntax": "<beatmapID>",
+		"callback": getMapNominator		
 	}
 ]
 
