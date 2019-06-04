@@ -39,6 +39,7 @@ from objects import glob
 from pubSubHandlers import changeUsernameHandler
 
 from pubSubHandlers import disconnectHandler
+from pubSubHandlers import createClanHandler
 from pubSubHandlers import banHandler
 from pubSubHandlers import notificationHandler
 from pubSubHandlers import updateSilenceHandler
@@ -324,6 +325,7 @@ if __name__ == "__main__":
 			"peppy:update_cached_stats": updateStatsHandler.handler(),
 			"peppy:silence": updateSilenceHandler.handler(),
 			"peppy:ban": banHandler.handler(),
+			"peppy:create_clan": createClanHandler.handler(),
 			"peppy:notification": notificationHandler.handler(),
 		}).start()
 
