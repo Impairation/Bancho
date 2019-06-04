@@ -47,6 +47,8 @@ class config:
 			self.config.get("server","gzip")
 			self.config.get("server","gziplevel")
 			self.config.get("server","cikey")
+			self.config.set("server", "deltaurl", "delta.ppy.sh")
+			self.config.set("server", "publicdelta", "0")
 
 			self.config.get("cheesegull", "apiurl")
 			self.config.get("cheesegull", "apikey")
@@ -62,6 +64,8 @@ class config:
 			self.config.get("discord","enable")
 			self.config.get("discord","boturl")
 			self.config.get("discord","devgroup")
+			self.config.get("discord","webhook")
+			
 
 			self.config.get("datadog", "enable")
 			self.config.get("datadog", "apikey")

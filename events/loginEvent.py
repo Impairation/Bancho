@@ -73,6 +73,11 @@ def handle(tornadoRequest):
 
 		# No login errors!
 
+		# Check if a users login/logouts are being tracked. If so, log to discord
+		tracked = userUtils.getUserTracked(userID)
+		if tracked:
+			log.cmyui('Tracked user {} ({}) has logged in.'.format(username, userID), 'cm')	
+
 		# Verify this user (if pending activation)
 		firstLogin = False
 		if priv & privileges.USER_PENDING_VERIFICATION > 0 or not userUtils.hasVerifiedHardware(userID):
@@ -116,11 +121,12 @@ def handle(tornadoRequest):
 			if expireDate-int(time.time()) <= 86400*3:
 				expireDays = round((expireDate-int(time.time()))/86400)
 				expireIn = "{} days".format(expireDays) if expireDays > 1 else "less than 24 hours"
-				responseToken.enqueue(serverPackets.notification("Your donor tag expires in {}! When your donor tag expires, you won't have any of the donor privileges, like yellow username, custom badge and discord custom role and username color! If you wish to keep supporting Ripple and you don't want to lose your donor privileges, you can donate again by clicking on 'Support us' on Ripple's website.".format(expireIn)))
+				responseToken.enqueue(serverPackets.notification("Your Donator tag expires in {}!".format(expireIn)))
 
-		# Deprecate telegram 2fa and send alert
-		if userUtils.deprecateTelegram2Fa(userID):
-			responseToken.enqueue(serverPackets.notification("As stated on our blog, Telegram 2FA has been deprecated on 29th June 2018. Telegram 2FA has just been disabled from your account. If you want to keep your account secure with 2FA, please enable TOTP-based 2FA from our website https://ripple.moe. Thank you for your patience."))
+		# Check if a users login/logouts are being tracked
+		tracked = userUtils.getUserTracked(userID)
+		if tracked:
+			log.cmyui('Tracked user {} ({}) has logged in.'.format(username, userID))
 
 		# Set silence end UNIX time in token
 		responseToken.silenceEndTime = userUtils.getSilenceEnd(userID)
@@ -153,7 +159,7 @@ def handle(tornadoRequest):
 				raise exceptions.banchoMaintenanceException()
 			else:
 				# We are mod/admin, send warning notification and continue
-				responseToken.enqueue(serverPackets.notification("Bancho is in maintenance mode. Only mods/admins have full access to the server.\nType !system maintenance off in chat to turn off maintenance mode."))
+				responseToken.enqueue(serverPackets.notification("Vipsu is in maintenance mode. Only mods/admins have full access to the server.\nType !system maintenance off in chat to turn off maintenance mode."))
 
 		# Send all needed login packets
 		responseToken.enqueue(serverPackets.silenceEndTime(silenceSeconds))
@@ -169,10 +175,16 @@ def handle(tornadoRequest):
 		# TODO: Configurable default channels
 		chat.joinChannel(token=responseToken, channel="#osu")
 		chat.joinChannel(token=responseToken, channel="#announce")
+		chat.joinChannel(token=responseToken, channel="#nowranked")
+		chat.joinChannel(token=responseToken, channel="#request")		
 
 		# Join admin channel if we are an admin
 		if responseToken.admin:
 			chat.joinChannel(token=responseToken, channel="#admin")
+		clan = glob.db.fetch("SELECT clan FROM user_clans WHERE user = %s",[userID])
+		if clan is not None:
+			chat.joinChannel(token=responseToken, channel="#clan_{}".format(clan["clan"]))
+	
 
 		# Output channels info
 		for key, value in glob.channels.channels.items():
@@ -183,8 +195,8 @@ def handle(tornadoRequest):
 		responseToken.enqueue(serverPackets.friendList(userID))
 
 		# Send main menu icon
-		if glob.banchoConf.config["menuIcon"] != "":
-			responseToken.enqueue(serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
+		#if glob.banchoConf.config["menuIcon"] != "":
+			#responseToken.enqueue(serverPackets.mainMenuIcon(glob.banchoConf.config["menuIcon"]))
 
 		# Send online users' panels
 		with glob.tokens:
@@ -242,11 +254,11 @@ def handle(tornadoRequest):
 		responseData = bytes()
 		if responseToken is not None:
 			responseData = responseToken.queue
-		responseData += serverPackets.notification("Our bancho server is in maintenance mode. Please try to login again later.")
+		responseData += serverPackets.notification("Our Vipsu server is in maintenance mode. Please try to login again later.")
 		responseData += serverPackets.loginFailed()
 	except exceptions.banchoRestartingException:
 		# Bancho is restarting
-		responseData += serverPackets.notification("Bancho is restarting. Try again in a few minutes.")
+		responseData += serverPackets.notification("Vipsu is restarting. Try again in a few minutes.")
 		responseData += serverPackets.loginFailed()
 	except exceptions.need2FAException:
 		# User tried to log in from unknown IP

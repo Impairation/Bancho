@@ -2,6 +2,7 @@ import time
 import json
 
 from common.log import logUtils as log
+from common.ripple import userUtils
 from constants import serverPackets
 from helpers import chatHelper as chat
 from objects import glob
@@ -23,6 +24,12 @@ def handle(userToken, _=None, deleteToken=True):
 
 		# Part matches
 		userToken.leaveMatch()
+		
+
+		# Check if a users login/logouts are being tracked. If so, log to discord
+		tracked = userUtils.getUserTracked(userID)
+		if tracked:
+			log.cmyui('Tracked user {} ({}) has logged out.'.format(username, userID), 'cm')		
 		
 		# Part all joined channels
 		for i in userToken.joinedChannels:
