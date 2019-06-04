@@ -1,6 +1,9 @@
 from common.log import logUtils as log
 from constants import clientPackets
 from constants import serverPackets
+from common.ripple import userUtils
+from common.constants import actions
+from common.ripple import scoreUtils
 from objects import glob
 
 def handle(userToken, packetData):
@@ -29,22 +32,42 @@ if userToken.spectating != 0 and userToken.actionID != actions.WATCHING and user
 if userToken.matchID != -1 and userToken.actionID != actions.MULTIPLAYING and userToken.actionID != actions.MULTIPLAYER and userToken.actionID != actions.AFK:
 	userToken.partMatch()
 		'''
+	
+	# Update cached stats if relax status changed
+	if packetData["actionMods"] & 128 != userToken.relax:
+		userToken.relax = packetData["actionMods"] & 128
+		notifs = userUtils.checkAkatsukiNotifications(userID)
+		if packetData["actionMods"] & 128:
+			if not notifs:
+				userToken.enqueue(serverPackets.notification("You've switched to Relax!"))
+			userToken.rxupdateCachedStats()
+		else:
+			if not notifs:
+				userToken.enqueue(serverPackets.notification("You've switched to Regular!"))
+			userToken.updateCachedStats()
 
 	# Update cached stats if our pp changed if we've just submitted a score or we've changed gameMode
-	#if (userToken.actionID == actions.PLAYING or userToken.actionID == actions.MULTIPLAYING) or (userToken.pp != userUtils.getPP(userID, userToken.gameMode)) or (userToken.gameMode != packetData["gameMode"]):
-
+	if (userToken.actionID == actions.PLAYING or userToken.actionID == actions.MULTIPLAYING) or (userToken.pp != userUtils.getPP(userID, userToken.gameMode)) or (userToken.gameMode != packetData["gameMode"]):
+		if packetData["actionMods"] & 128:
+			userToken.rxupdateCachedStats()
+		else:
+			userToken.updateCachedStats()
+	
 	# Update cached stats if we've changed gamemode
 	if userToken.gameMode != packetData["gameMode"]:
 		userToken.gameMode = packetData["gameMode"]
-		userToken.updateCachedStats()
-
+		if packetData["actionMods"] & 128:
+			userToken.rxupdateCachedStats()
+		else:
+			userToken.updateCachedStats()
+	
 	# Always update action id, text, md5 and beatmapID
 	userToken.actionID = packetData["actionID"]
-	userToken.actionText = packetData["actionText"]
+	userToken.actionText = packetData["actionText"] + " +" + scoreUtils.readableMods(int(packetData["actionMods"]))
 	userToken.actionMd5 = packetData["actionMd5"]
 	userToken.actionMods = packetData["actionMods"]
 	userToken.beatmapID = packetData["beatmapID"]
-
+	
 	# Enqueue our new user panel and stats to us and our spectators
 	recipients = [userToken]
 	if len(userToken.spectators) > 0:
@@ -60,4 +83,4 @@ if userToken.matchID != -1 and userToken.actionID != actions.MULTIPLAYING and us
 			i.enqueue(serverPackets.userStats(userID, force))
 
 	# Console output
-	log.info("{} changed action: {} [{}][{}][{}]".format(username, str(userToken.actionID), userToken.actionText, userToken.actionMd5, userToken.beatmapID))
+	log.info("{} changed action: {} [{}][{}][{}].".format(username, str(userToken.actionID), userToken.actionText, userToken.actionMd5, userToken.beatmapID))
